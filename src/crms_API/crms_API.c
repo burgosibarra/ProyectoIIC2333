@@ -25,7 +25,10 @@ CrmsFile* crmsfile_init()
 void crmsfile_create(CrmsFile* crmsfile, char* name, uint32_t file_size, uint32_t start_address, uint32_t finished_address)
 {
     crmsfile -> validity = 0x01;
-    crmsfile -> name = name;
+    for (int index = 0; index < NAME_SIZE; index++)
+    {
+        crmsfile -> name[index] = name[index];
+    }
     crmsfile -> file_size = file_size;
     crmsfile -> start_address = start_address;
     crmsfile -> finished_address = finished_address;
@@ -79,9 +82,10 @@ void cr_mount(char* memory_path)
 
     FILE* memory;
     memory = fopen(*file_direction, "rb");  // r for read, b for binary
-    uint32_t status;
-    uint32_t process_id_found;
-    char process_name[NAME_SIZE];
+    uint8_t status;
+    uint8_t process_id_found;
+    char* process_name = malloc(NAME_SIZE * sizeof(char));
+    char* file_name = malloc(NAME_SIZE * sizeof(char)); // PROCESS_FILE_NAME
     for (int pcb = 0; pcb < PROCESS_AMOUNT; pcb++)
     {
         pcb_table[pcb] = pcb_init(0x00, 0, "MEGUSTAELPAN");
@@ -91,19 +95,22 @@ void cr_mount(char* memory_path)
         if (status == 0x01)
         {
 
-            fread(process_name, NAME_SIZE, 1, memory); //OJOOOOOO
+            fread(process_name, 1, NAME_SIZE, memory); //OJOOOOOO
             pcb_table[pcb]->state = 0x01;
             pcb_table[pcb]->id = process_id_found;
-            pcb_table[pcb]->name = process_name;
+            
+            for (int index=0; index < NAME_SIZE; index++)
+            {
+                pcb_table[pcb]->name[index] = process_name[index];
+            }
 
-            uint32_t validation;
-            char file_name[NAME_SIZE]; // PROCESS_FILE_NAME
+            uint8_t validation;
             uint32_t file_size; // PROCESS_FILE_SIZE
             uint32_t virtual_memory; // PROCESS_FILE_VIRTUAL_MEMORY
             for (int file = 0; file < PROCESS_FILES_AMOUNT; file++)
             {
                 fread(&validation, 1, 1, memory);
-                fread(file_name, NAME_SIZE, 1, memory); //OJOOOOOOOO
+                fread(file_name, 1, NAME_SIZE, memory); //OJOOOOOOOO
 
                 fread(&file_size, PROCESS_FILE_SIZE, 1, memory);
                 //file_size = bswap_32(file_size); //OJOOOOOOO
@@ -132,6 +139,8 @@ void cr_mount(char* memory_path)
             fseek(memory, PCB_SIZE - 2, SEEK_CUR);
         }
     }
+    free(process_name);
+    free(file_name);
     fclose(memory);
 }
 
@@ -143,10 +152,10 @@ void cr_ls_process()
     {
         if (pcb_table[i] -> state == 0x01)
         {
-            printf("* [%i] ", pcb_table[i] -> id);
+            printf(" * [%i] ", pcb_table[i] -> id);
             for (int character = 0; character < NAME_SIZE; character++)
             {
-                printf("%c", pcb_table[i]->name[character]);
+                printf("%c", (char) ((int) pcb_table[i]->name[character]));
             }
             printf("\n");
         }
