@@ -5,7 +5,7 @@ const int FILE_NAME_SIZE = 12;
 const int PROCESS_AMOUNT = 16;
 const int NAME_SIZE = 12;
 const int PROCESS_FILE_VIRTUAL_MEMORY = 4;
-const int PROCESS_FILES_AMOUNT = 12;
+const int PROCESS_FILES_AMOUNT = 10;
 const int PROCESS_FILE_SIZE = 4;
 const int PCB_SIZE = 256;
 const int PAGE_TABLE_ENTRIES = 32;
@@ -78,10 +78,17 @@ void crmsfile_destroy(CrmsFile* crmsfile)
 void cr_mount(char* memory_path)
 {
     //Función para guardar ruta de memoria
-    file_direction = &(memory_path);
+    for (int j=0; j < sizeof(memory_path); j++)
+    {
+        file_direction[j] = memory_path[j];
+    }
+    for (int j=sizeof(memory_path); j < 256 - sizeof(memory_path); j++)
+    {
+        file_direction[j] = "";
+    }
 
     FILE* memory;
-    memory = fopen(*file_direction, "rb");  // r for read, b for binary
+    memory = fopen(file_direction, "rb");  // r for read, b for binary
     uint8_t status;
     uint8_t process_id_found;
     char* process_name = malloc(NAME_SIZE * sizeof(char));
@@ -94,7 +101,7 @@ void cr_mount(char* memory_path)
 
         if (status == 0x01)
         {
-
+            // printf("- %i\n", status);
             fread(process_name, 1, NAME_SIZE, memory); //OJOOOOOO
             pcb_table[pcb]->state = 0x01;
             pcb_table[pcb]->id = process_id_found;
@@ -136,6 +143,7 @@ void cr_mount(char* memory_path)
         }
         else
         {
+          // printf("%i\n", status);
             fseek(memory, PCB_SIZE - 2, SEEK_CUR);
         }
     }
@@ -158,31 +166,160 @@ void cr_ls_process()
                 printf("%c", (char) ((int) pcb_table[i]->name[character]));
             }
             printf("\n");
-        }
+        } 
     }
 }
 
+int name_coincidence(char* file_name_found, char* file_name)
+{
+    for (int index = 0; index < NAME_SIZE; index++)
+    {
+        if ((char) ((int) file_name_found[index]) != file_name[index]) return 0;
+    }
+    return 1;
+}
+
+//Funcion para revisar si existe el archivo en la memoria del proceso
 int cr_exists(int process_id, char* file_name)
 {
-    //Funcion para revisar si existe el archivo en la memoria del proceso
-    return 0;
+    for (int i=0; i < PROCESS_AMOUNT; i++)
+    {
+        if (pcb_table[i]->state == 0x01 && pcb_table[i]->id == process_id)
+        {
+            for (int j=0; j < PROCESS_FILES_AMOUNT; j++)
+            {
+                if (pcb_table[i]->files[j]->validity == 0x01 && name_coincidence(pcb_table[i]->files[j]->name, file_name))
+                {
+                    return 1;
+                }
+            }
+            return 0;
+        }
+    }
+    // levantar un error porque el proceso no exite
+  return 0;
 }
 
 void cr_ls_files(int process_id)
 {
-    //Funcion para listar archivos dentro de la memoria del proceso
+    int process_found = 0;
+    for (int i=0; i < PROCESS_AMOUNT; i++)
+    {
+        if (pcb_table[i]->state == 0x01 && pcb_table[i]->id == process_id)
+        {
+            process_found = 1;
+          printf("Los archivos del proceso [%i] ", process_id);
+          for (int character = 0; character < NAME_SIZE; character++)
+            {
+                printf("%c", (char) ((int) pcb_table[i]->name[character]));
+            }
+            printf(" son:\n");
+            int file_number = 1;
+            for (int j=0; j < PROCESS_FILES_AMOUNT; j++)
+            {
+                if (pcb_table[i]->files[j]->validity == 0x01)
+                {
+                    printf("%i. ", file_number);
+                    for (int character = 0; character < NAME_SIZE; character++)
+                    {
+                        printf("%c", (char) ((int) pcb_table[i]->files[j]->name[character]));
+                    }
+                    printf("\n");
+                    file_number++;
+                }
+            }
+        }
+    }
+    if (process_found == 0)
+    {
+        // levantar error
+    }
 }
   
 
 //FUNCIONES PROCESOS
 void cr_start_process(int process_id, char* process_name)
 {
-    //Inicia proceso con nombre process_name y id process_id
+    for (int index = 0; index < PROCESS_AMOUNT; index++)
+    {
+        if (pcb_table[index]->state == 0x01 && pcb_table[index]->id == process_id)
+        {
+            printf("El proceso que quieres iniciar ya está iniciado uwu WARNING!!!!!!!!!!!!\n");
+            return;
+        }
+    }
+    for (int index = 0; index < PROCESS_AMOUNT; index++)
+    {
+        if (pcb_table[index]->state == 0x00)
+        {
+            pcb_table[index]->state = 0x01;
+            pcb_table[index]->id = process_id;
+            int name_length = sizeof(process_name);
+            if (name_length < NAME_SIZE)
+            {
+                for (int j = 0; j < name_length; j++)
+                {
+                    pcb_table[index]->name[j] = process_name[j]; 
+                }
+                for (int j = name_length; j < NAME_SIZE; j++)
+                {
+                    pcb_table[index]->name[j] = ""; 
+                }
+                return;
+            } else {
+                for (int j = 0; j < NAME_SIZE; j++)
+                {
+                    pcb_table[index]->name[j] = process_name[j]; 
+                }
+                return;
+            }
+        }
+    }
 }
 
 void cr_finish_process(int process_id)
 {
+    
+  for (int i = 0; i < PROCESS_AMOUNT; i++)
+  {
+    if (pcb_table[i] -> state == 0x01 && pcb_table[i] -> id == process_id)
+    {
+      //TERMINAR PROCESO Y LIBERAR MEMORIA
+      FILE* memory = fopen(*file_direction, "rb");
+      fseek(memory, 4096, SEEK_SET);
+        pcb_table[i] -> state == 0x00;
+        uint8_t entry;
+        uint8_t pfn;
+        uint8_t validity = 0b10000000;
+        uint8_t pfn_mask = 0b01111111;
+        int byte_position;
+        int bit_position;
+        uint8_t frame_bitmap;
+        for (int page_number = 0; page_number < 16; page_number++)
+        {
+            entry = (uint8_t) pcb_table[i]->page_table -> entries[page_number];
+            if (entry & validity == validity)
+            {
+                pfn = entry & pfn_mask;
+                byte_position = pfn/8; //1
+                bit_position = pfn % 8; //3
+                fseek(memory, byte_position, SEEK_CUR);
+                fread(&frame_bitmap, 1, 1, memory);
+                frame_bitmap = frame_bitmap & !((int) pow(2,bit_position));
+                fseek(memory, -1, SEEK_CUR);
+                fwrite(&frame_bitmap, 1, 1, memory);
+            }
+        }
+        fclose(memory);
+    }
+  
+    if (i==16)
+    {
+        //Implementar Error
+        printf("No existe un proceso con ese ID");
+    }
+    }
     //Funcion que termina el proceso con id process_id
-}
+    }
 
 

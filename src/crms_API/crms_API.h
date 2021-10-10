@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 #include <byteswap.h>
 #include "PageTable.h"
 
@@ -30,7 +31,7 @@ struct pcb
 };
 
 PCB* pcb_table[16];
-char** file_direction;
+char* file_direction;
 
 PCB* pcb_init(uint8_t state, uint8_t id, char* name);
 void pcb_destroy(PCB* pcb);

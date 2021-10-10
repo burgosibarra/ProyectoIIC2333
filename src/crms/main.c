@@ -10,8 +10,12 @@
 int main(int argc, char **argv)
 {
     cr_mount("memfilled.bin");
-    //printf("file_direction = %s\n", *file_direction);
     cr_ls_process();
+    //cr_exists(27, "nani");
+    //cr_ls_files(27);
+    //cr_start_process(26, "Raulitoteamo");
+    //cr_ls_process();
+    cr_finish_process(27);
     
 }
 
