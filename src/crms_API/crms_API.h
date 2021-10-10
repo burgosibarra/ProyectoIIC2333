@@ -3,11 +3,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
+#include <string.h>
 #include <byteswap.h>
 #include "PageTable.h"
 
 
 struct crmsfile;
+
 typedef struct crmsfile CrmsFile;
 
 struct crmsfile
@@ -20,7 +22,9 @@ struct crmsfile
 };
 
 struct pcb;
+
 typedef struct pcb PCB;
+
 struct pcb
 {
     uint8_t state;
@@ -31,7 +35,10 @@ struct pcb
 };
 
 PCB* pcb_table[16];
-char* file_direction;
+
+char** file_direction;
+
+char* memory_path_;
 
 PCB* pcb_init(uint8_t state, uint8_t id, char* name);
 void pcb_destroy(PCB* pcb);

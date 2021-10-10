@@ -1,5 +1,6 @@
 //FUNCIONES GENERALES
 #include "crms_API.h"
+#include <string.h>
 
 const int FILE_NAME_SIZE = 12;
 const int PROCESS_AMOUNT = 16;
@@ -74,21 +75,33 @@ void crmsfile_destroy(CrmsFile* crmsfile)
     free(crmsfile);
 }
 
+void function()
+{
+    printf("Función -> file_direction = %s\n", *file_direction);
+}
 
 void cr_mount(char* memory_path)
 {
     //Función para guardar ruta de memoria
-    for (int j=0; j < sizeof(memory_path); j++)
+    //file_direction = malloc(strlen(memory_path) * sizeof(char));
+    //for (int i = 0; i < strlen(memory_path); i++)
+    //{
+    //    *file_direction[i] = memory_path[i];
+    //}
+    char* aux = malloc(14);
+    for (int i = 0; i < (int) strlen(memory_path) + 1; i++)
     {
-        file_direction[j] = memory_path[j];
+        strcpy(&aux[i], &memory_path[i]);
     }
-    for (int j=sizeof(memory_path); j < 256 - sizeof(memory_path); j++)
+    file_direction = &(aux);
+    //printf("ESTE ES EL FILE DIRECTION: %s\n", *file_direction);
+    /*for (int i = 0; i < (int) strlen(memory_path); i++)
     {
-        file_direction[j] = "";
+        printf("Letra: %c\n", (*file_direction)[i]);
     }
-
+    printf("\n");*/
     FILE* memory;
-    memory = fopen(file_direction, "rb");  // r for read, b for binary
+    memory = fopen(*file_direction, "rb");  // r for read, b for binary
     uint8_t status;
     uint8_t process_id_found;
     char* process_name = malloc(NAME_SIZE * sizeof(char));
@@ -254,7 +267,7 @@ void cr_start_process(int process_id, char* process_name)
         {
             pcb_table[index]->state = 0x01;
             pcb_table[index]->id = process_id;
-            int name_length = sizeof(process_name);
+            int name_length = strlen(process_name);
             if (name_length < NAME_SIZE)
             {
                 for (int j = 0; j < name_length; j++)
@@ -284,10 +297,11 @@ void cr_finish_process(int process_id)
   {
     if (pcb_table[i] -> state == 0x01 && pcb_table[i] -> id == process_id)
     {
-      //TERMINAR PROCESO Y LIBERAR MEMORIA
-      FILE* memory = fopen(*file_direction, "rb");
-      fseek(memory, 4096, SEEK_SET);
-        pcb_table[i] -> state == 0x00;
+        //TERMINAR PROCESO Y LIBERAR MEMORIA
+        printf("file_direction = %s\n", *file_direction);
+        FILE* memory = fopen(*file_direction, "rb");
+        fseek(memory, 4096, SEEK_SET);
+        pcb_table[i] -> state = 0x00;
         uint8_t entry;
         uint8_t pfn;
         uint8_t validity = 0b10000000;
@@ -298,15 +312,18 @@ void cr_finish_process(int process_id)
         for (int page_number = 0; page_number < 16; page_number++)
         {
             entry = (uint8_t) pcb_table[i]->page_table -> entries[page_number];
-            if (entry & validity == validity)
+            if ((entry & validity) == validity)
             {
                 pfn = entry & pfn_mask;
                 byte_position = pfn/8; //1
                 bit_position = pfn % 8; //3
                 fseek(memory, byte_position, SEEK_CUR);
                 fread(&frame_bitmap, 1, 1, memory);
+                fclose(memory);
                 frame_bitmap = frame_bitmap & !((int) pow(2,bit_position));
-                fseek(memory, -1, SEEK_CUR);
+                //fseek(memory, -1, SEEK_CUR);
+                FILE* memory = fopen(*file_direction, "wb");
+                fseek(memory, 4096 + byte_position, SEEK_SET);
                 fwrite(&frame_bitmap, 1, 1, memory);
             }
         }
