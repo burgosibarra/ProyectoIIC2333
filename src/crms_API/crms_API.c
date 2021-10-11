@@ -83,6 +83,15 @@ void function()
     printf("Función -> file_direction = %s\n", file_direction);
 }
 
+void print_name(uint8_t* buffer, int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        printf("%c", (char) buffer[i]);
+    }
+    printf("\n");
+}
+
 void cr_mount(char* memory_path)
 {
     //Función para guardar ruta de memoria
@@ -136,10 +145,10 @@ void cr_mount(char* memory_path)
                 fread(file_name, 1, NAME_SIZE, memory); //OJOOOOOOOO
 
                 fread(&file_size, PROCESS_FILE_SIZE, 1, memory);
-                //file_size = bswap_32(file_size); //OJOOOOOOO
+                file_size = bswap_32(file_size); //OJOOOOOOO
 
                 fread(&virtual_memory, PROCESS_FILE_VIRTUAL_MEMORY, 1, memory);
-                //virtual_memory = bswap_32(virtual_memory); // OJOOOOOOOO
+                virtual_memory = bswap_32(virtual_memory); // OJOOOOOOOO
 
                 if (validation == 0x01)
                 {
@@ -147,8 +156,8 @@ void cr_mount(char* memory_path)
                     // ojo que parametros están en el stack
                     uint32_t start_virtual_address = virtual_memory;
                     uint32_t finished_virtual_address = virtual_memory + file_size;
-                    crmsfile_create(pcb_table[pcb]->files[file], file_name, file_size, start_virtual_address, finished_virtual_address, '-');                    
-                    printf("FILE SIZE: %i\n", pcb_table[pcb]->files[file]->file_size);
+                    crmsfile_create(pcb_table[pcb]->files[file], file_name, file_size, start_virtual_address, finished_virtual_address, '-');
+                    printf("Process: [%i] File name: [%s] FILE SIZE: %i\n", pcb_table[pcb] -> id, pcb_table[pcb] -> files[file]->name, pcb_table[pcb]->files[file]->file_size);
                 }
             }
             uint8_t page_info;
@@ -517,10 +526,8 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
     int physicalAddress;
     int page_table;
     int bytes_read;
-    printf("%i\n", (int) file_desc->file_size);
     n_bytes = fmin(n_bytes, (int) file_desc->file_size);
-    printf("%i\n", n_bytes);
-    buffer = (void *) malloc(n_bytes * sizeof(uint8_t));
+    uint8_t* buffer_aux = malloc(n_bytes * sizeof(uint8_t));
     for (int pointer = 0; pointer < PROCESS_AMOUNT; pointer++)
     {
         fread(&status, 1, 1, memory); // se lee el status del proceso
@@ -555,7 +562,8 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
     {
         /* leer los n_bytes */
         fseek(memory, offset, SEEK_CUR); // avanzamos el offset
-        fread(buffer, n_bytes, 1, memory); //leemos los n bytes
+        fread(buffer_aux, n_bytes, 1, memory); //leemos los n bytes
+        bytes_read = n_bytes;
         
     }else // si hay que leer más de una página
     {
@@ -567,15 +575,15 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
             /*leemos lo que podamos*/
             if (bytes_read==0) // si es la primera página
             { 
-                fread(buffer, 8388608-offset, 1, memory);
+                fread(buffer_aux, 8388608-offset, 1, memory);
                 bytes_read = bytes_read + (8388608-offset);
             }else if ((n_bytes-bytes_read)>8388608) // es una página intermedia
             {
-                fread(buffer, 8388608, 1, memory);
+                fread(&(buffer_aux)[bytes_read], 8388608, 1, memory);
                 bytes_read = bytes_read + 8 * 1024 * 1024;
             }else if ((n_bytes-bytes_read)<=8388608) // es la última página
             {
-                fread(buffer, n_bytes-bytes_read, 1, memory);
+                fread(&(buffer_aux)[bytes_read], n_bytes-bytes_read, 1, memory);
                 bytes_read = bytes_read + n_bytes-bytes_read;
             }
             
@@ -598,6 +606,7 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
         }
     }
     fclose(memory);
+    buffer = buffer_aux;
     return bytes_read;
     
     

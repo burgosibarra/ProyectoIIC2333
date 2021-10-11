@@ -21,12 +21,14 @@ int main(int argc, char **argv)
     //cr_open(27, "billetedeluk", 'w');
     //cr_ls_files(27);
     void* buffer;
-    int bytes_read = cr_read(cr_open(27, "caramel.wav", 'r'), buffer, 100000000);
+    int bytes_read = cr_read(cr_open(27, "caramel.wav", 'r'), buffer, 2);
+    printf("Esto es bytes_read %i\n", bytes_read);
     for(int i = 0; i < bytes_read; i++)
     {
-        printf("%c", (char) ((uint8_t*) buffer)[i]);
+        printf("%c", (char) ((uint8_t *) buffer)[i]);
     }
     printf("\n");
+
     free(buffer);
 }
 
