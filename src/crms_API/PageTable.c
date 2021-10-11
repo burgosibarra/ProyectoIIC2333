@@ -15,3 +15,4 @@ void page_table_destroy(PageTable* page_table)
     free(page_table -> entries);
     free(page_table);
 }
+

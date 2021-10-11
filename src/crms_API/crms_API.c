@@ -10,6 +10,7 @@ const int PROCESS_FILES_AMOUNT = 10;
 const int PROCESS_FILE_SIZE = 4;
 const int PCB_SIZE = 256;
 const int PAGE_TABLE_ENTRIES = 32;
+const int PROCESS_FILE_MAX_SIZE = 32;
 
 
 CrmsFile* crmsfile_init()
@@ -18,12 +19,13 @@ CrmsFile* crmsfile_init()
     crmsfile -> validity = 0x00;
     crmsfile -> name = malloc(NAME_SIZE * sizeof(char));
     crmsfile -> file_size = 0;
+    crmsfile -> mode = '-';
     crmsfile -> start_address = 0;
     crmsfile -> finished_address = 0;
     return crmsfile;
 }
 
-void crmsfile_create(CrmsFile* crmsfile, char* name, uint32_t file_size, uint32_t start_address, uint32_t finished_address)
+void crmsfile_create(CrmsFile* crmsfile, char* name, uint32_t file_size, uint32_t start_address, uint32_t finished_address, char mode)
 {
     crmsfile -> validity = 0x01;
     for (int index = 0; index < NAME_SIZE; index++)
@@ -33,6 +35,7 @@ void crmsfile_create(CrmsFile* crmsfile, char* name, uint32_t file_size, uint32_
     crmsfile -> file_size = file_size;
     crmsfile -> start_address = start_address;
     crmsfile -> finished_address = finished_address;
+    crmsfile -> mode = mode;
 }
 
 
@@ -77,7 +80,7 @@ void crmsfile_destroy(CrmsFile* crmsfile)
 
 void function()
 {
-    printf("Función -> file_direction = %s\n", *file_direction);
+    printf("Función -> file_direction = %s\n", file_direction);
 }
 
 void cr_mount(char* memory_path)
@@ -86,22 +89,22 @@ void cr_mount(char* memory_path)
     //file_direction = malloc(strlen(memory_path) * sizeof(char));
     //for (int i = 0; i < strlen(memory_path); i++)
     //{
-    //    *file_direction[i] = memory_path[i];
+    //    file_direction[i] = memory_path[i];
     //}
-    char* aux = malloc(14);
+    char aux[14];
     for (int i = 0; i < (int) strlen(memory_path) + 1; i++)
     {
-        strcpy(&aux[i], &memory_path[i]);
+        aux[i] = memory_path[i];
     }
-    file_direction = &(aux);
-    //printf("ESTE ES EL FILE DIRECTION: %s\n", *file_direction);
+    strcpy(file_direction, aux);
+    //printf("ESTE ES EL FILE DIRECTION: %s\n", file_direction);
     /*for (int i = 0; i < (int) strlen(memory_path); i++)
     {
-        printf("Letra: %c\n", (*file_direction)[i]);
+        printf("Letra: %c\n", (file_direction)[i]);
     }
     printf("\n");*/
     FILE* memory;
-    memory = fopen(*file_direction, "rb");  // r for read, b for binary
+    memory = fopen(file_direction, "rb");  // r for read, b for binary
     uint8_t status;
     uint8_t process_id_found;
     char* process_name = malloc(NAME_SIZE * sizeof(char));
@@ -144,7 +147,8 @@ void cr_mount(char* memory_path)
                     // ojo que parametros están en el stack
                     uint32_t start_virtual_address = virtual_memory;
                     uint32_t finished_virtual_address = virtual_memory + file_size;
-                    crmsfile_create(pcb_table[pcb]->files[file], file_name, file_size, start_virtual_address, finished_virtual_address);                    
+                    crmsfile_create(pcb_table[pcb]->files[file], file_name, file_size, start_virtual_address, finished_virtual_address, '-');                    
+                    printf("FILE SIZE: %i\n", pcb_table[pcb]->files[file]->file_size);
                 }
             }
             uint8_t page_info;
@@ -298,9 +302,27 @@ void cr_finish_process(int process_id)
     if (pcb_table[i] -> state == 0x01 && pcb_table[i] -> id == process_id)
     {
         //TERMINAR PROCESO Y LIBERAR MEMORIA
-        printf("file_direction = %s\n", *file_direction);
-        FILE* memory = fopen(*file_direction, "rb");
-        fseek(memory, 4096, SEEK_SET);
+        FILE* memory = fopen(file_direction, "rb+");
+        uint8_t status;
+        uint8_t process_id_found;
+        for (int process = 0; process < PROCESS_AMOUNT; process++)
+        {
+            fread(&status, 1, 1, memory);
+            fread(&process_id_found, 1, 1, memory);
+            if (process_id_found == process_id && status == 0x01)
+            {
+                fseek(memory,- 2, SEEK_CUR);
+                status = 0x00;
+                fwrite(&status, 1, 1, memory);
+                break;
+            }
+            else
+            {
+                fseek(memory, PCB_SIZE - 2, SEEK_CUR);
+            }
+        }
+    
+
         pcb_table[i] -> state = 0x00;
         uint8_t entry;
         uint8_t pfn;
@@ -309,6 +331,8 @@ void cr_finish_process(int process_id)
         int byte_position;
         int bit_position;
         uint8_t frame_bitmap;
+
+        fseek(memory, 4096, SEEK_SET);        
         for (int page_number = 0; page_number < 16; page_number++)
         {
             entry = (uint8_t) pcb_table[i]->page_table -> entries[page_number];
@@ -319,11 +343,8 @@ void cr_finish_process(int process_id)
                 bit_position = pfn % 8; //3
                 fseek(memory, byte_position, SEEK_CUR);
                 fread(&frame_bitmap, 1, 1, memory);
-                fclose(memory);
                 frame_bitmap = frame_bitmap & !((int) pow(2,bit_position));
-                //fseek(memory, -1, SEEK_CUR);
-                FILE* memory = fopen(*file_direction, "wb");
-                fseek(memory, 4096 + byte_position, SEEK_SET);
+                fseek(memory, -1, SEEK_CUR);
                 fwrite(&frame_bitmap, 1, 1, memory);
             }
         }
@@ -339,4 +360,258 @@ void cr_finish_process(int process_id)
     //Funcion que termina el proceso con id process_id
     }
 
+CrmsFile* cr_open(int process_id, char* file_name, char mode)
+{
+    
+    for (int process = 0; process < PROCESS_AMOUNT; process++)
+    {
+        if (pcb_table[process]->id == process_id && pcb_table[process]->state == 0x01)
+        {
 
+            switch(mode)
+            {
+                case 'r':;
+                    for (int file = 0; file < PROCESS_FILES_AMOUNT; file++)
+                    {
+                        if (name_coincidence(pcb_table[process]->files[file]->name, file_name) && pcb_table[process]->files[file]->validity == 0x01)
+                        {
+                            //Crear el struct
+                            pcb_table[process]->files[file]->mode = 'r';
+                            return pcb_table[process]->files[file];
+                        }
+                    }
+                    // Manejar error
+                    break;
+
+                case 'w':;
+                    int virtual_addresses_used[PROCESS_FILES_AMOUNT];
+                    int sized_used[PROCESS_FILES_AMOUNT];
+
+                    int available_space = -1;
+                    for (int file = 0; file < PROCESS_FILES_AMOUNT; file++)
+                    {
+                        if ((pcb_table[process]->files[file]->validity) == 0x01)
+                        {
+                            virtual_addresses_used[file] = (int) pcb_table[process]->files[file]->start_address;
+                            sized_used[file] = (int) pcb_table[process]->files[file]->file_size;
+                        }
+                        else
+                        {
+                            if (available_space == -1)
+                            {
+                                available_space = file;
+                            }
+                            virtual_addresses_used[file] = -1;
+                            sized_used[file] = -1;
+                        }
+
+                        if (name_coincidence(pcb_table[process]->files[file]->name, file_name) && pcb_table[process]->files[file]->validity == 0x01)
+                        {
+                            //¿Manejar el error
+                        }
+                    }
+
+                    if (available_space == -1)
+                    {
+                        // manejar error falta de espacio (ya hay 10 archivos)
+                    }
+
+                    mergeSort(virtual_addresses_used, sized_used, 0, PROCESS_FILES_AMOUNT - 1);
+
+                    int start_virtual_address = 0;
+                    int finished_virtual_address = PROCESS_FILES_AMOUNT * PROCESS_FILE_MAX_SIZE;
+                    
+                    int found = 0;
+                    for (int file=0; file < PROCESS_FILES_AMOUNT; file++)
+                    {
+                        if (virtual_addresses_used[file] != -1 && file < PROCESS_FILES_AMOUNT - 1)
+                        {
+                            if (virtual_addresses_used[file] + sized_used[file] < virtual_addresses_used[file + 1])
+                            {
+                                start_virtual_address = virtual_addresses_used[file] + sized_used[file];
+                                finished_virtual_address = fmin(start_virtual_address + PROCESS_FILE_MAX_SIZE, virtual_addresses_used[file + 1]);
+                                found = 1;
+                                break;
+                            }
+                        }
+                        else if (virtual_addresses_used[file] != -1 && file == PROCESS_FILES_AMOUNT - 1)
+                        {
+                            if (virtual_addresses_used[file] + sized_used[file] < finished_virtual_address)
+                            {
+                                start_virtual_address = virtual_addresses_used[file] + sized_used[file];
+                                finished_virtual_address = fmin(start_virtual_address + PROCESS_FILE_MAX_SIZE, finished_virtual_address);
+                                found = 1;
+                                break;
+                            }
+                        }
+                    }
+                    if (found == 0)
+                    {
+                        finished_virtual_address = PROCESS_FILE_MAX_SIZE;
+                    }
+
+                    int file_size = finished_virtual_address - start_virtual_address;
+
+                    pcb_table[process]->files[available_space]->validity = 0x01;
+                    crmsfile_create(pcb_table[process]->files[available_space], file_name, (uint32_t) file_size, (uint32_t) start_virtual_address, (uint32_t) finished_virtual_address, 'w');
+                    FILE* memory = fopen(file_direction, "rb+");
+                    fseek(memory, PCB_SIZE * process + 14 + 21 * available_space, SEEK_SET);
+                    uint8_t validity = pcb_table[process]->files[available_space]->validity;
+                    //char name[FILE_NAME_SIZE] = ;
+                    uint32_t size = 0;
+                    uint32_t address = pcb_table[process]->files[available_space]->start_address;
+                    fwrite(&validity, 1, 1, memory);
+                    uint8_t aux;
+                    for (int char_name = 0; char_name < FILE_NAME_SIZE; char_name++)
+                    {
+                        aux = (uint8_t) pcb_table[process]->files[available_space]->name[char_name];
+                        fwrite(&aux, 1, 1, memory);
+                    }
+                    fwrite(&size, 4, 1, memory);
+                    fwrite(&address, 4, 1, memory);
+                    fclose(memory);
+                    return pcb_table[process]->files[available_space];
+
+                    break;
+            }
+        }
+    }
+
+    // Manejar error
+
+}
+
+//Funcion para escribir archivo
+int cr_write_file(CrmsFile* file_desc, void* buffer, int n_bytes) 
+{
+    return 0;
+}
+
+//Funcion para leer archivo
+int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
+{
+
+    if (file_desc->mode != 'r')
+    {
+        // LLORAR
+    }
+
+    FILE* memory;
+    memory = fopen(file_direction, "rb+");
+    // en file_desc debría estar la dirección virtual del archivo 
+
+    uint8_t status;
+    uint8_t process_id;
+    uint32_t virtual_dir = file_desc->start_address;
+    uint32_t SEG_MASK = 0b00001111100000000000000000000000;
+    uint32_t OFFSET_MASK = 0b00000000011111111111111111111111;
+    int SEG_SHIFT = 23;
+    int VPN;
+    int page;
+    uint8_t valid_mask = 128;
+    uint8_t pfn_mask = 127;
+    int valid_shift = 7;
+    int valid;
+    int PFN;
+    int offset;
+    int physicalAddress;
+    int page_table;
+    int bytes_read;
+    printf("%i\n", (int) file_desc->file_size);
+    n_bytes = fmin(n_bytes, (int) file_desc->file_size);
+    printf("%i\n", n_bytes);
+    buffer = (void *) malloc(n_bytes * sizeof(uint8_t));
+    for (int pointer = 0; pointer < PROCESS_AMOUNT; pointer++)
+    {
+        fread(&status, 1, 1, memory); // se lee el status del proceso
+        fread(&process_id, 1, 1, memory); // se lee id de el proceso
+        if (process_id == 27 && status == 0x01) // si el proceso es el mismo del archivo se busca la tabla de páginas
+        {
+
+            fseek(memory,210, SEEK_CUR); // pasamos las entradas de archivos
+            page_table = ftell(memory); // guardamos la posición de la tabla de páginas del proceso
+            // separamos la VPN de el offset en la dirección virtual
+            VPN = (virtual_dir & SEG_MASK) >> SEG_SHIFT;
+            offset = virtual_dir & OFFSET_MASK;
+
+            
+            fseek(memory ,VPN, SEEK_CUR); // nos movemos hasta la entrada número segment
+            fread(&page, 1, 1, memory); // leemos la entrada 1bit de validez y 7 de PFN
+            // se paramos el bit de validez del PFN
+            valid = (page & valid_mask) >> valid_shift;
+            PFN = page & pfn_mask;
+            physicalAddress = PFN + offset; // obtenemos la dirección fisica como la dirección de la pagina + el offset
+            // continuamos moviendonos hasta llegar al final de las tablas
+        }
+        else
+        {
+            fseek(memory, PCB_SIZE - 2, SEEK_CUR);
+            
+        }
+    }
+    fseek(memory, 16, SEEK_CUR); // nos saltamos el frame bit map
+    fseek(memory, PFN*8388608, SEEK_CUR); // llegamos a la página designada por el pfn*8MB
+    if (n_bytes+offset<=8388608) // si solo tenemos que leer una página
+    {
+        /* leer los n_bytes */
+        fseek(memory, offset, SEEK_CUR); // avanzamos el offset
+        fread(buffer, n_bytes, 1, memory); //leemos los n bytes
+        
+    }else // si hay que leer más de una página
+    {
+        /*hay que leer hasta donde se pueda y seguir a la siguiente página*/
+        bytes_read = 0;
+        
+        while (bytes_read<n_bytes) // mientras no terminemos de leer 
+        {
+            /*leemos lo que podamos*/
+            if (bytes_read==0) // si es la primera página
+            { 
+                fread(buffer, 8388608-offset, 1, memory);
+                bytes_read = bytes_read + (8388608-offset);
+            }else if ((n_bytes-bytes_read)>8388608) // es una página intermedia
+            {
+                fread(buffer, 8388608, 1, memory);
+                bytes_read = bytes_read + 8 * 1024 * 1024;
+            }else if ((n_bytes-bytes_read)<=8388608) // es la última página
+            {
+                fread(buffer, n_bytes-bytes_read, 1, memory);
+                bytes_read = bytes_read + n_bytes-bytes_read;
+            }
+            
+            if (bytes_read<n_bytes) // si aún no terminamos de leer
+            {
+                fseek(memory, page_table, SEEK_SET); //volvemos a la tabla de páginas
+                VPN = VPN+1; // nos movemos a la siguiente página
+                fseek(memory ,VPN, SEEK_CUR); // nos movemos hasta la entrada número segment
+                fread(&page, 1, 1, memory); // leemos la entrada 1bit de validez y 7 de PFN
+
+                // se paramos el bit de validez del PFN
+                valid = (page & valid_mask) >> valid_shift;
+                PFN = virtual_dir & OFFSET_MASK;
+                physicalAddress = PFN + offset;
+
+                fseek(memory, 16, SEEK_CUR); // nos saltamos el frame bit map
+                fseek(memory, PFN*8388608, SEEK_CUR); // llegamos a la página designada por el pfn*8MB
+            }
+            
+        }
+    }
+    fclose(memory);
+    return bytes_read;
+    
+    
+    
+}
+
+//Funcion para borrar archivo
+void cr_delete_file(CrmsFile* file_desc)
+{
+    
+}
+
+//Funcion para cerrar archivo
+void cr_close(CrmsFile* file_desc)
+{
+    file_desc->mode = '-';
+}

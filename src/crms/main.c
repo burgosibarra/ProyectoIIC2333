@@ -6,7 +6,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-extern char** file_direction;
 
 int main(int argc, char **argv)
 {
@@ -14,12 +13,20 @@ int main(int argc, char **argv)
     // char* file = *file_direction;
     //printf("%s", *file_direction);
     //function();
-    //cr_ls_process();
+    //cr_ls_files(27);
     //cr_exists(27, "nani");
     //cr_ls_files(27);
     //cr_start_process(26, "Raulitoteamo");
-    cr_ls_process();
-    cr_finish_process(27);
-    cr_ls_process();
+    //cr_finish_process(27);
+    //cr_open(27, "billetedeluk", 'w');
+    //cr_ls_files(27);
+    void* buffer;
+    int bytes_read = cr_read(cr_open(27, "caramel.wav", 'r'), buffer, 100000000);
+    for(int i = 0; i < bytes_read; i++)
+    {
+        printf("%c", (char) ((uint8_t*) buffer)[i]);
+    }
+    printf("\n");
+    free(buffer);
 }
 
