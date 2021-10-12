@@ -5,6 +5,7 @@
 #include <math.h>
 #include <string.h>
 #include <byteswap.h>
+#include <string.h>
 #include "PageTable.h"
 #include "mergeSort.h"
 
@@ -12,6 +13,10 @@
 struct crmsfile;
 
 typedef struct crmsfile CrmsFile;
+
+struct pcb;
+
+typedef struct pcb PCB;
 
 struct crmsfile
 {
@@ -21,11 +26,8 @@ struct crmsfile
     uint32_t file_size;
     uint32_t start_address;
     uint32_t finished_address;
+    PCB* pcb;
 };
-
-struct pcb;
-
-typedef struct pcb PCB;
 
 struct pcb
 {
@@ -36,17 +38,17 @@ struct pcb
     PageTable* page_table;
 };
 
+/*
 PCB* pcb_table[16];
-
 // https://stackoverflow.com/questions/48538425/c-modify-global-char-array
 char file_direction[];
+*/
 
-char* memory_path_;
-
-PCB* pcb_init(uint8_t state, uint8_t id, char* name);
+PCB* pcb_init();
+void pcb_create(PCB* pcb, int state, int id, char* name);
 void pcb_destroy(PCB* pcb);
 
-CrmsFile* crmsfile_init();
+CrmsFile* crmsfile_init(PCB* pcb);
 void crmsfile_create(CrmsFile* crmsfile, char* name, uint32_t file_size, uint32_t start_address, uint32_t finished_address, char mode);
 void crmsfile_destroy(CrmsFile* crmsfile);
 

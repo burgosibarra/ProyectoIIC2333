@@ -1,6 +1,5 @@
 //FUNCIONES GENERALES
 #include "crms_API.h"
-#include <string.h>
 
 const int FILE_NAME_SIZE = 12;
 const int PROCESS_AMOUNT = 16;
@@ -12,8 +11,20 @@ const int PCB_SIZE = 256;
 const int PAGE_TABLE_ENTRIES = 32;
 const int PROCESS_FILE_MAX_SIZE = 32;
 
+PCB* pcb_table[16];
+// https://stackoverflow.com/questions/48538425/c-modify-global-char-array
+char file_direction[];
 
-CrmsFile* crmsfile_init()
+void name_assign(char* destination, char* origin)//Funcion auxiliar para asignar nombres
+{
+    int maximum_len = fmin((int) strlen(origin), NAME_SIZE);
+    for (int index = 0; index < maximum_len; index++)
+    {
+        destination[index] = origin[index];
+    }
+}
+
+CrmsFile* crmsfile_init(PCB* pcb)
 {
     CrmsFile* crmsfile = malloc(sizeof(CrmsFile));
     crmsfile -> validity = 0x00;
@@ -22,16 +33,14 @@ CrmsFile* crmsfile_init()
     crmsfile -> mode = '-';
     crmsfile -> start_address = 0;
     crmsfile -> finished_address = 0;
+    crmsfile -> pcb = pcb;
     return crmsfile;
 }
 
 void crmsfile_create(CrmsFile* crmsfile, char* name, uint32_t file_size, uint32_t start_address, uint32_t finished_address, char mode)
 {
     crmsfile -> validity = 0x01;
-    for (int index = 0; index < NAME_SIZE; index++)
-    {
-        crmsfile -> name[index] = name[index];
-    }
+    name_assign(crmsfile -> name, name);
     crmsfile -> file_size = file_size;
     crmsfile -> start_address = start_address;
     crmsfile -> finished_address = finished_address;
@@ -39,23 +48,26 @@ void crmsfile_create(CrmsFile* crmsfile, char* name, uint32_t file_size, uint32_
 }
 
 
-PCB* pcb_init(uint8_t state, uint8_t id, char* name)
+PCB* pcb_init()
 {
     PCB* pcb = malloc(sizeof(PCB));
-    pcb -> state = state;
-    pcb -> id = id;
+    pcb -> state = 0x00;
+    pcb -> id = 0;
     pcb -> name = malloc(NAME_SIZE * sizeof(char));
-    for (int index = 0; index < NAME_SIZE; index++)
-    {
-        pcb -> name[index] = name[index];
-    }
     pcb -> files = malloc(PROCESS_FILES_AMOUNT * sizeof(CrmsFile*));
     for (int file = 0; file < PROCESS_FILES_AMOUNT; file++)
     {
-        pcb -> files[file] = crmsfile_init();
+        pcb -> files[file] = crmsfile_init(pcb);
     }
     pcb -> page_table = page_table_init();
     return pcb;
+}
+
+void pcb_create(PCB* pcb, int state, int id, char* name)
+{
+    pcb -> state = state;
+    pcb -> id = id;
+    name_assign(pcb -> name, name);
 }
 
 void pcb_destroy(PCB* pcb)
@@ -77,41 +89,22 @@ void crmsfile_destroy(CrmsFile* crmsfile)
     free(crmsfile -> name);
     free(crmsfile);
 }
-
+/*
 void function()
 {
     printf("Función -> file_direction = %s\n", file_direction);
-}
-
-void print_name(uint8_t* buffer, int size)
-{
-    for(int i = 0; i < size; i++)
-    {
-        printf("%c", (char) buffer[i]);
-    }
-    printf("\n");
-}
+}*/
 
 void cr_mount(char* memory_path)
 {
-    //Función para guardar ruta de memoria
-    //file_direction = malloc(strlen(memory_path) * sizeof(char));
-    //for (int i = 0; i < strlen(memory_path); i++)
-    //{
-    //    file_direction[i] = memory_path[i];
-    //}
-    char aux[14];
-    for (int i = 0; i < (int) strlen(memory_path) + 1; i++)
+    char aux[14]; //Variable auxiliar: copiar el nombre de memoria a file_direction
+    for (int i = 0; i < (int) strlen(memory_path); i++)
     {
         aux[i] = memory_path[i];
     }
     strcpy(file_direction, aux);
-    //printf("ESTE ES EL FILE DIRECTION: %s\n", file_direction);
-    /*for (int i = 0; i < (int) strlen(memory_path); i++)
-    {
-        printf("Letra: %c\n", (file_direction)[i]);
-    }
-    printf("\n");*/
+
+
     FILE* memory;
     memory = fopen(file_direction, "rb");  // r for read, b for binary
     uint8_t status;
@@ -120,46 +113,39 @@ void cr_mount(char* memory_path)
     char* file_name = malloc(NAME_SIZE * sizeof(char)); // PROCESS_FILE_NAME
     for (int pcb = 0; pcb < PROCESS_AMOUNT; pcb++)
     {
-        pcb_table[pcb] = pcb_init(0x00, 0, "MEGUSTAELPAN");
+        pcb_table[pcb] = pcb_init(); //Se inicializa vacío
         fread(&status, 1, 1, memory);
         fread(&process_id_found, 1, 1, memory);
 
         if (status == 0x01)
         {
             // printf("- %i\n", status);
-            fread(process_name, 1, NAME_SIZE, memory); //OJOOOOOO
-            pcb_table[pcb]->state = 0x01;
-            pcb_table[pcb]->id = process_id_found;
-            
-            for (int index=0; index < NAME_SIZE; index++)
-            {
-                pcb_table[pcb]->name[index] = process_name[index];
-            }
+            fread(process_name, 1, NAME_SIZE, memory);
+            pcb_create(pcb_table[pcb], 0x01, process_id_found, process_name);
 
             uint8_t validation;
-            uint32_t file_size; // PROCESS_FILE_SIZE
-            uint32_t virtual_memory; // PROCESS_FILE_VIRTUAL_MEMORY
+            uint32_t file_size;
+            uint32_t virtual_memory;
             for (int file = 0; file < PROCESS_FILES_AMOUNT; file++)
             {
                 fread(&validation, 1, 1, memory);
-                fread(file_name, 1, NAME_SIZE, memory); //OJOOOOOOOO
+                fread(file_name, 1, NAME_SIZE, memory);
 
                 fread(&file_size, PROCESS_FILE_SIZE, 1, memory);
-                file_size = bswap_32(file_size); //OJOOOOOOO
+                file_size = bswap_32(file_size);//Se da vuelta ya que leemos n bytes 1 vez
 
                 fread(&virtual_memory, PROCESS_FILE_VIRTUAL_MEMORY, 1, memory);
-                virtual_memory = bswap_32(virtual_memory); // OJOOOOOOOO
+                virtual_memory = bswap_32(virtual_memory);//Se da vuelta ya que leemos n bytes 1 vez
 
                 if (validation == 0x01)
                 {
-                    // Crear el struct
-                    // ojo que parametros están en el stack
                     uint32_t start_virtual_address = virtual_memory;
                     uint32_t finished_virtual_address = virtual_memory + file_size;
                     crmsfile_create(pcb_table[pcb]->files[file], file_name, file_size, start_virtual_address, finished_virtual_address, '-');
-                    printf("Process: [%i] File name: [%s] FILE SIZE: %i\n", pcb_table[pcb] -> id, pcb_table[pcb] -> files[file]->name, pcb_table[pcb]->files[file]->file_size);
+                    //printf("Process: [%i] File name: [%s] FILE SIZE: %i\n", pcb_table[pcb] -> id, pcb_table[pcb] -> files[file]->name, pcb_table[pcb]->files[file]->file_size);
                 }
             }
+
             uint8_t page_info;
             for (int page = 0; page < PAGE_TABLE_ENTRIES; page++)
             {
@@ -169,7 +155,6 @@ void cr_mount(char* memory_path)
         }
         else
         {
-          // printf("%i\n", status);
             fseek(memory, PCB_SIZE - 2, SEEK_CUR);
         }
     }
@@ -198,9 +183,17 @@ void cr_ls_process()
 
 int name_coincidence(char* file_name_found, char* file_name)
 {
-    for (int index = 0; index < NAME_SIZE; index++)
+    if ((int) strlen(file_name_found) != (int) strlen(file_name))
     {
-        if ((char) ((int) file_name_found[index]) != file_name[index]) return 0;
+        return 0;
+    }
+
+    for (int index = 0; index < (int) strlen(file_name); index++)
+    {
+        if ((char) ((int) file_name_found[index]) != file_name[index])
+        { 
+            return 0;
+        }
     }
     return 1;
 }
@@ -222,8 +215,9 @@ int cr_exists(int process_id, char* file_name)
             return 0;
         }
     }
-    // levantar un error porque el proceso no exite
-  return 0;
+    
+    //ERROR -> Levantar un error porque el proceso no existe
+    return 0;
 }
 
 void cr_ls_files(int process_id)
@@ -234,8 +228,8 @@ void cr_ls_files(int process_id)
         if (pcb_table[i]->state == 0x01 && pcb_table[i]->id == process_id)
         {
             process_found = 1;
-          printf("Los archivos del proceso [%i] ", process_id);
-          for (int character = 0; character < NAME_SIZE; character++)
+            printf("Los archivos del proceso [%i] ", process_id);
+            for (int character = 0; character < NAME_SIZE; character++)
             {
                 printf("%c", (char) ((int) pcb_table[i]->name[character]));
             }
@@ -246,7 +240,7 @@ void cr_ls_files(int process_id)
                 if (pcb_table[i]->files[j]->validity == 0x01)
                 {
                     printf("%i. ", file_number);
-                    for (int character = 0; character < NAME_SIZE; character++)
+                    for (int character = 0; character < (int) strlen(pcb_table[i]->files[j]->name); character++)
                     {
                         printf("%c", (char) ((int) pcb_table[i]->files[j]->name[character]));
                     }
@@ -270,223 +264,247 @@ void cr_start_process(int process_id, char* process_name)
     {
         if (pcb_table[index]->state == 0x01 && pcb_table[index]->id == process_id)
         {
+            // ERROR Levantar error
             printf("El proceso que quieres iniciar ya está iniciado uwu WARNING!!!!!!!!!!!!\n");
             return;
         }
     }
+    int process_created = 0; //Para saber si ya podemos crearlo
     for (int index = 0; index < PROCESS_AMOUNT; index++)
     {
-        if (pcb_table[index]->state == 0x00)
+        if (pcb_table[index]->state == 0x00 && process_created == 0) //Si no esta creado, y se puede crear en este espacio
         {
-            pcb_table[index]->state = 0x01;
-            pcb_table[index]->id = process_id;
-            int name_length = strlen(process_name);
-            if (name_length < NAME_SIZE)
+            process_created == 1;
+
+            pcb_create(pcb_table[index], 0x01, process_id, process_name); //Creamos el proceso en tabla pcb
+            FILE* memory = fopen(file_direction, "rb+");
+
+            fseek(memory, PCB_SIZE * index, SEEK_SET);
+            fwrite(&pcb_table[index]->state, 1, 1, memory);//Escribimos en memoria física
+            fwrite(&pcb_table[index]->id, 1, 1, memory); 
+            for (int char_name = 0; char_name < NAME_SIZE; char_name++)
             {
-                for (int j = 0; j < name_length; j++)
-                {
-                    pcb_table[index]->name[j] = process_name[j]; 
-                }
-                for (int j = name_length; j < NAME_SIZE; j++)
-                {
-                    pcb_table[index]->name[j] = ""; 
-                }
-                return;
-            } else {
-                for (int j = 0; j < NAME_SIZE; j++)
-                {
-                    pcb_table[index]->name[j] = process_name[j]; 
-                }
-                return;
+                fwrite(&(pcb_table[index]->name[char_name]), 1, 1, memory);
             }
+            uint8_t aux = 0x00;
+            fwrite(&aux, 1, 242, memory);//Llenamos los 242 bytes de 0x00
+
+            fclose(memory);
+
+            break;
         }
+    }
+
+    if (process_created == 0)
+    {
+        // ERROR Levantar error, no cabe otro proceso
     }
 }
 
 void cr_finish_process(int process_id)
 {
-    
-  for (int i = 0; i < PROCESS_AMOUNT; i++)
-  {
-    if (pcb_table[i] -> state == 0x01 && pcb_table[i] -> id == process_id)
+    int i;
+    for (i = 0; i < PROCESS_AMOUNT; i++)
     {
-        //TERMINAR PROCESO Y LIBERAR MEMORIA
-        FILE* memory = fopen(file_direction, "rb+");
-        uint8_t status;
-        uint8_t process_id_found;
-        for (int process = 0; process < PROCESS_AMOUNT; process++)
+        if (pcb_table[i] -> state == 0x01 && pcb_table[i] -> id == process_id)
         {
-            fread(&status, 1, 1, memory);
-            fread(&process_id_found, 1, 1, memory);
-            if (process_id_found == process_id && status == 0x01)
+
+            pcb_table[i] -> state = 0x00;
+
+            //TERMINAR PROCESO Y LIBERAR MEMORIA
+            FILE* memory = fopen(file_direction, "rb+");
+            fseek(memory, i * PCB_SIZE, SEEK_SET);
+            uint8_t status = 0x00;
+            fwrite(&status, 1, 1, memory);
+
+          
+/*            uint8_t process_id_found;
+            for (int process = 0; process < PROCESS_AMOUNT; process++)
             {
-                fseek(memory,- 2, SEEK_CUR);
-                status = 0x00;
-                fwrite(&status, 1, 1, memory);
+                fread(&status, 1, 1, memory);
+                fread(&process_id_found, 1, 1, memory);
+                if (process_id_found == process_id && status == 0x01)
+                {
+                    fseek(memory,- 2, SEEK_CUR);
+                    status = 0x00;
+                    fwrite(&status, 1, 1, memory);
+                    break;
+                }
+                else
+                {
+                    fseek(memory, PCB_SIZE - 2, SEEK_CUR);
+                }
+            }*/
+
+            uint8_t entry;
+            uint8_t pfn;
+            uint8_t validity = 0b10000000;
+            uint8_t pfn_mask = 0b01111111;
+            int byte_position;
+            int bit_position;
+            uint8_t frame_bitmap;
+
+            fseek(memory, 4096, SEEK_SET);
+
+            for (int page_number = 0; page_number < 16; page_number++)
+            {
+                entry = (uint8_t) pcb_table[i]->page_table -> entries[page_number];
+                if ((entry & validity) == validity)
+                {
+                    pfn = entry & pfn_mask;
+                    byte_position = pfn/8; //1
+                    bit_position = pfn % 8; //3
+                    fseek(memory, byte_position, SEEK_CUR);
+                    fread(&frame_bitmap, 1, 1, memory);
+                    frame_bitmap = frame_bitmap & !((int) pow(2,bit_position));
+                    fseek(memory, -1, SEEK_CUR);
+                    fwrite(&frame_bitmap, 1, 1, memory);
+                }
+            }
+            
+            fclose(memory);
+            break;
+        }
+    }
+    if (i==16)
+    {
+        //ERROR
+        printf("No existe un proceso con ese ID");
+    }
+}
+
+void virtual_address_calculator(CrmsFile* file_desc, int file_size) //Calculamos la dirección virtual
+{
+    PCB* pcb = file_desc -> pcb;
+
+    int virtual_addresses_used[PROCESS_FILES_AMOUNT];
+    int sized_used[PROCESS_FILES_AMOUNT];
+
+    for (int file = 0; file < PROCESS_FILES_AMOUNT; file++)
+    {
+        if ((pcb->files[file]->validity) == 0x01)
+        {
+            virtual_addresses_used[file] = (int) pcb->files[file]->start_address;
+            sized_used[file] = (int) pcb->files[file]->file_size;
+        }
+        else
+        {
+            virtual_addresses_used[file] = -1;
+            sized_used[file] = -1;
+        }
+    }
+
+    mergeSort(virtual_addresses_used, sized_used, 0, PROCESS_FILES_AMOUNT - 1);
+
+    int start_virtual_address = 0;
+    int finished_virtual_address = PROCESS_FILES_AMOUNT * PROCESS_FILE_MAX_SIZE;
+    
+    int found = 0;
+    for (int file=0; file < PROCESS_FILES_AMOUNT; file++)
+    {
+        if (virtual_addresses_used[file] != -1)
+        {
+            if (start_virtual_address < virtual_addresses_used[file])
+            {
+                finished_virtual_address = virtual_addresses_used[file];
+                found = 1;
                 break;
             }
             else
             {
-                fseek(memory, PCB_SIZE - 2, SEEK_CUR);
+                start_virtual_address = virtual_addresses_used[file] + sized_used[file];
             }
         }
-    
 
-        pcb_table[i] -> state = 0x00;
-        uint8_t entry;
-        uint8_t pfn;
-        uint8_t validity = 0b10000000;
-        uint8_t pfn_mask = 0b01111111;
-        int byte_position;
-        int bit_position;
-        uint8_t frame_bitmap;
-
-        fseek(memory, 4096, SEEK_SET);        
-        for (int page_number = 0; page_number < 16; page_number++)
-        {
-            entry = (uint8_t) pcb_table[i]->page_table -> entries[page_number];
-            if ((entry & validity) == validity)
-            {
-                pfn = entry & pfn_mask;
-                byte_position = pfn/8; //1
-                bit_position = pfn % 8; //3
-                fseek(memory, byte_position, SEEK_CUR);
-                fread(&frame_bitmap, 1, 1, memory);
-                frame_bitmap = frame_bitmap & !((int) pow(2,bit_position));
-                fseek(memory, -1, SEEK_CUR);
-                fwrite(&frame_bitmap, 1, 1, memory);
-            }
-        }
-        fclose(memory);
     }
-  
-    if (i==16)
+    if (found == 0)
     {
-        //Implementar Error
-        printf("No existe un proceso con ese ID");
+        finished_virtual_address = fmin(start_virtual_address + file_size, PROCESS_FILES_AMOUNT * PROCESS_FILE_MAX_SIZE);
     }
-    }
-    //Funcion que termina el proceso con id process_id
-    }
+
+    file_desc -> start_address = start_virtual_address;
+    file_desc -> finished_address = finished_virtual_address;
+
+}
+
 
 CrmsFile* cr_open(int process_id, char* file_name, char mode)
 {
-    
     for (int process = 0; process < PROCESS_AMOUNT; process++)
     {
         if (pcb_table[process]->id == process_id && pcb_table[process]->state == 0x01)
         {
-
             switch(mode)
             {
                 case 'r':;
                     for (int file = 0; file < PROCESS_FILES_AMOUNT; file++)
                     {
-                        if (name_coincidence(pcb_table[process]->files[file]->name, file_name) && pcb_table[process]->files[file]->validity == 0x01)
+                        if (pcb_table[process]->files[file]->validity == 0x01 && name_coincidence(pcb_table[process]->files[file]->name, file_name))
                         {
-                            //Crear el struct
-                            pcb_table[process]->files[file]->mode = 'r';
-                            return pcb_table[process]->files[file];
+
+                            if (pcb_table[process]->files[file]->mode != '-')
+                            {
+                                //ERROR, el archivo ya está abierto en algún modo
+                            }
+                            else
+                            {
+                                pcb_table[process]->files[file]->mode = 'r';
+                                return pcb_table[process]->files[file];   
+                            }
                         }
                     }
-                    // Manejar error
+                    // ERROR El archivo no existe
                     break;
-
+                    
                 case 'w':;
-                    int virtual_addresses_used[PROCESS_FILES_AMOUNT];
-                    int sized_used[PROCESS_FILES_AMOUNT];
-
+                    
                     int available_space = -1;
                     for (int file = 0; file < PROCESS_FILES_AMOUNT; file++)
                     {
-                        if ((pcb_table[process]->files[file]->validity) == 0x01)
+                        if (pcb_table[process]->files[file]->validity == 0x01 && name_coincidence(pcb_table[process]->files[file]->name, file_name))
                         {
-                            virtual_addresses_used[file] = (int) pcb_table[process]->files[file]->start_address;
-                            sized_used[file] = (int) pcb_table[process]->files[file]->file_size;
+                            // ERROR, el archivo ya está abierto en algún modo
+                            /* CR_ERROR = 6;
+                            cr_sterror(6); */
+                            return NULL; // OJO
                         }
-                        else
+                        else if (pcb_table[process]->files[file]->validity == 0x01 && available_space == -1)
                         {
-                            if (available_space == -1)
-                            {
-                                available_space = file;
-                            }
-                            virtual_addresses_used[file] = -1;
-                            sized_used[file] = -1;
-                        }
-
-                        if (name_coincidence(pcb_table[process]->files[file]->name, file_name) && pcb_table[process]->files[file]->validity == 0x01)
-                        {
-                            //¿Manejar el error
+                            available_space = file;
                         }
                     }
 
                     if (available_space == -1)
                     {
-                        // manejar error falta de espacio (ya hay 10 archivos)
+                        // ERROR ya hay 10 archivos
                     }
 
-                    mergeSort(virtual_addresses_used, sized_used, 0, PROCESS_FILES_AMOUNT - 1);
+                                       
+                    crmsfile_create(pcb_table[process]->files[available_space], file_name, (uint32_t) 0, (uint32_t) 0, (uint32_t) 0, 'w');
 
-                    int start_virtual_address = 0;
-                    int finished_virtual_address = PROCESS_FILES_AMOUNT * PROCESS_FILE_MAX_SIZE;
-                    
-                    int found = 0;
-                    for (int file=0; file < PROCESS_FILES_AMOUNT; file++)
-                    {
-                        if (virtual_addresses_used[file] != -1 && file < PROCESS_FILES_AMOUNT - 1)
-                        {
-                            if (virtual_addresses_used[file] + sized_used[file] < virtual_addresses_used[file + 1])
-                            {
-                                start_virtual_address = virtual_addresses_used[file] + sized_used[file];
-                                finished_virtual_address = fmin(start_virtual_address + PROCESS_FILE_MAX_SIZE, virtual_addresses_used[file + 1]);
-                                found = 1;
-                                break;
-                            }
-                        }
-                        else if (virtual_addresses_used[file] != -1 && file == PROCESS_FILES_AMOUNT - 1)
-                        {
-                            if (virtual_addresses_used[file] + sized_used[file] < finished_virtual_address)
-                            {
-                                start_virtual_address = virtual_addresses_used[file] + sized_used[file];
-                                finished_virtual_address = fmin(start_virtual_address + PROCESS_FILE_MAX_SIZE, finished_virtual_address);
-                                found = 1;
-                                break;
-                            }
-                        }
-                    }
-                    if (found == 0)
-                    {
-                        finished_virtual_address = PROCESS_FILE_MAX_SIZE;
-                    }
-
-                    int file_size = finished_virtual_address - start_virtual_address;
-
-                    pcb_table[process]->files[available_space]->validity = 0x01;
-                    crmsfile_create(pcb_table[process]->files[available_space], file_name, (uint32_t) file_size, (uint32_t) start_virtual_address, (uint32_t) finished_virtual_address, 'w');
                     FILE* memory = fopen(file_direction, "rb+");
-                    fseek(memory, PCB_SIZE * process + 14 + 21 * available_space, SEEK_SET);
+                    fseek(memory, PCB_SIZE * process + 14 + 21 * available_space, SEEK_SET); // 14 -> info pcb, 21 -> info archivo
                     uint8_t validity = pcb_table[process]->files[available_space]->validity;
-                    //char name[FILE_NAME_SIZE] = ;
                     uint32_t size = 0;
-                    uint32_t address = pcb_table[process]->files[available_space]->start_address;
+                    uint32_t address = 0;
                     fwrite(&validity, 1, 1, memory);
-                    uint8_t aux;
+                    uint8_t char_aux;
                     for (int char_name = 0; char_name < FILE_NAME_SIZE; char_name++)
                     {
-                        aux = (uint8_t) pcb_table[process]->files[available_space]->name[char_name];
-                        fwrite(&aux, 1, 1, memory);
+                        char_aux = (uint8_t) pcb_table[process]->files[available_space]->name[char_name];
+                        fwrite(&char_aux, 1, 1, memory);
                     }
                     fwrite(&size, 4, 1, memory);
                     fwrite(&address, 4, 1, memory);
                     fclose(memory);
+
                     return pcb_table[process]->files[available_space];
 
                     break;
             }
         }
     }
-
-    // Manejar error
+    // ERROR El proceso no existe
 
 }
 
