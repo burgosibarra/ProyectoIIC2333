@@ -97,12 +97,12 @@ void function()
 
 void cr_mount(char* memory_path)
 {
-    char aux[14]; //Variable auxiliar: copiar el nombre de memoria a file_direction
+    /*char aux[14]; //Variable auxiliar: copiar el nombre de memoria a file_direction
     for (int i = 0; i < (int) strlen(memory_path); i++)
     {
         aux[i] = memory_path[i];
-    }
-    strcpy(file_direction, aux);
+    }*/
+    strcpy(file_direction, memory_path);
 
 
     FILE* memory;
@@ -514,7 +514,7 @@ int cr_write_file(CrmsFile* file_desc, void* buffer, int n_bytes)
     return 0;
 }
 
-//Funcion para leer archivo
+
 int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
 {
 
@@ -523,113 +523,125 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
         // LLORAR
     }
 
-    FILE* memory;
-    memory = fopen(file_direction, "rb+");
     // en file_desc debría estar la dirección virtual del archivo 
 
     uint8_t status;
     uint8_t process_id;
     uint32_t virtual_dir = file_desc->start_address;
+
     uint32_t SEG_MASK = 0b00001111100000000000000000000000;
     uint32_t OFFSET_MASK = 0b00000000011111111111111111111111;
     int SEG_SHIFT = 23;
     int VPN;
-    int page;
-    uint8_t valid_mask = 128;
-    uint8_t pfn_mask = 127;
+    uint8_t page;
+
+    uint8_t valid_mask = 0b10000000;//128   
+    uint8_t pfn_mask = 0b01111111;//127
     int valid_shift = 7;
     int valid;
     int PFN;
+
     int offset;
     int physicalAddress;
-    int page_table;
+    int page_table_position;
+
     int bytes_read;
     n_bytes = fmin(n_bytes, (int) file_desc->file_size);
-    uint8_t* buffer_aux = malloc(n_bytes * sizeof(uint8_t));
-    for (int pointer = 0; pointer < PROCESS_AMOUNT; pointer++)
+
+    //uint8_t* buffer_aux = malloc(n_bytes * sizeof(uint8_t));
+    
+    
+    // separamos la VPN de el offset en la dirección virtual
+    VPN = (virtual_dir & SEG_MASK) >> SEG_SHIFT;
+    offset = virtual_dir & OFFSET_MASK;
+
+    page = file_desc -> pcb -> page_table -> entries [VPN];
+    // se paramos el bit de validez del PFN
+    valid = (page & valid_mask) >> valid_shift;
+
+    if (valid == 0)
     {
-        fread(&status, 1, 1, memory); // se lee el status del proceso
-        fread(&process_id, 1, 1, memory); // se lee id de el proceso
-        if (process_id == 27 && status == 0x01) // si el proceso es el mismo del archivo se busca la tabla de páginas
-        {
-
-            fseek(memory,210, SEEK_CUR); // pasamos las entradas de archivos
-            page_table = ftell(memory); // guardamos la posición de la tabla de páginas del proceso
-            // separamos la VPN de el offset en la dirección virtual
-            VPN = (virtual_dir & SEG_MASK) >> SEG_SHIFT;
-            offset = virtual_dir & OFFSET_MASK;
-
-            
-            fseek(memory ,VPN, SEEK_CUR); // nos movemos hasta la entrada número segment
-            fread(&page, 1, 1, memory); // leemos la entrada 1bit de validez y 7 de PFN
-            // se paramos el bit de validez del PFN
-            valid = (page & valid_mask) >> valid_shift;
-            PFN = page & pfn_mask;
-            physicalAddress = PFN + offset; // obtenemos la dirección fisica como la dirección de la pagina + el offset
-            // continuamos moviendonos hasta llegar al final de las tablas
-        }
-        else
-        {
-            fseek(memory, PCB_SIZE - 2, SEEK_CUR);
-            
-        }
+        // ERROR, pagina de direccion virtual no tiene frame asignado
+        printf("ERROR, pagina de direccion virtual no tiene frame asignado");
+        return;
     }
-    fseek(memory, 16, SEEK_CUR); // nos saltamos el frame bit map
-    fseek(memory, PFN*8388608, SEEK_CUR); // llegamos a la página designada por el pfn*8MB
-    if (n_bytes+offset<=8388608) // si solo tenemos que leer una página
+
+    PFN = page & pfn_mask;
+    // OJO physical address not used
+    //physicalAddress = PFN + offset; // obtenemos la dirección fisica como la dirección de la pagina + el offset
+    // continuamos moviendonos hasta llegar al final de las tablas
+    
+
+    FILE* memory;
+    memory = fopen(file_direction, "rb+");
+    fseek(memory, PCB_SIZE * 16 + 16 + PFN * (8 * 1024 * 1024), SEEK_SET); // llegamos a la página designada por el pfn*8MB
+    if (n_bytes + offset <= (8 * 1024 * 1024)) // si solo tenemos que leer una página
     {
         /* leer los n_bytes */
         fseek(memory, offset, SEEK_CUR); // avanzamos el offset
-        fread(buffer_aux, n_bytes, 1, memory); //leemos los n bytes
+        //fread(buffer_aux, n_bytes, 1, memory); //leemos los n bytes
+        fread((uint8_t*) buffer, n_bytes, 1, memory); //leemos los n bytes
         bytes_read = n_bytes;
         
-    }else // si hay que leer más de una página
+    }
+    else // si hay que leer más de una página
     {
-        /*hay que leer hasta donde se pueda y seguir a la siguiente página*/
+        /*hay que leer hasta donde se pueda y seguir a la siguiente página/frame */
         bytes_read = 0;
         
-        while (bytes_read<n_bytes) // mientras no terminemos de leer 
+        while (bytes_read < n_bytes) // mientras no terminemos de leer 
         {
             /*leemos lo que podamos*/
-            if (bytes_read==0) // si es la primera página
+            if (bytes_read == 0) // si es el primer frame
             { 
-                fread(buffer_aux, 8388608-offset, 1, memory);
-                bytes_read = bytes_read + (8388608-offset);
-            }else if ((n_bytes-bytes_read)>8388608) // es una página intermedia
+                //fread(buffer_aux, (8 * 1024 * 1024) - offset, 1, memory);
+                fread((uint8_t*) buffer, 1, (8 * 1024 * 1024) - offset, memory);
+                bytes_read = bytes_read + ((8 * 1024 * 1024) - offset);
+
+            }
+            else if ( (n_bytes-bytes_read) > (8 * 1024 * 1024)) // es una página intermedia
             {
-                fread(&(buffer_aux)[bytes_read], 8388608, 1, memory);
+                //fread(&(buffer_aux[bytes_read]), (8 * 1024 * 1024), 1, memory);
+                fread((uint8_t*) &(buffer[bytes_read]), 1, (8 * 1024 * 1024), memory);
                 bytes_read = bytes_read + 8 * 1024 * 1024;
-            }else if ((n_bytes-bytes_read)<=8388608) // es la última página
+            }
+            else if ((n_bytes-bytes_read) <= (8 * 1024 * 1024)) // es la última página
             {
-                fread(&(buffer_aux)[bytes_read], n_bytes-bytes_read, 1, memory);
-                bytes_read = bytes_read + n_bytes-bytes_read;
+                //fread(&(buffer_aux[bytes_read]), (n_bytes - bytes_read), 1, memory);
+                fread((uint8_t*) &(buffer[bytes_read]), 1, (n_bytes - bytes_read), memory);
+                bytes_read = bytes_read + (n_bytes - bytes_read);
             }
             
-            if (bytes_read<n_bytes) // si aún no terminamos de leer
+            if (bytes_read < n_bytes) // si aún no terminamos de leer
             {
-                fseek(memory, page_table, SEEK_SET); //volvemos a la tabla de páginas
-                VPN = VPN+1; // nos movemos a la siguiente página
-                fseek(memory ,VPN, SEEK_CUR); // nos movemos hasta la entrada número segment
-                fread(&page, 1, 1, memory); // leemos la entrada 1bit de validez y 7 de PFN
 
+                VPN = VPN + 1; // nos movemos a la siguiente página
+                page = file_desc -> pcb -> page_table -> entries [VPN];
                 // se paramos el bit de validez del PFN
                 valid = (page & valid_mask) >> valid_shift;
-                PFN = virtual_dir & OFFSET_MASK;
-                physicalAddress = PFN + offset;
 
-                fseek(memory, 16, SEEK_CUR); // nos saltamos el frame bit map
-                fseek(memory, PFN*8388608, SEEK_CUR); // llegamos a la página designada por el pfn*8MB
+                if (valid == 0)
+                {
+                    // ERROR, pagina de direccion virtual no tiene frame asignado
+                    printf("NUNCA DEBERIAMOS LLEGAR AQUI");
+                    printf("ERROR, pagina de direccion virtual no tiene frame asignado");
+                    return;
+                }
+
+                PFN = page & pfn_mask;
+
+                fseek(memory, PCB_SIZE * 16 + 16 + PFN * (8 * 1024 * 1024), SEEK_SET); // llegamos a la página designada por el pfn*8MB
             }
             
         }
     }
     fclose(memory);
-    buffer = buffer_aux;
+    //buffer = buffer_aux;
     return bytes_read;
-    
-    
-    
+
 }
+
+
 
 //Funcion para borrar archivo
 void cr_delete_file(CrmsFile* file_desc)
