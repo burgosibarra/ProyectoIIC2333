@@ -11,6 +11,14 @@
 
 int main(int argc, char **argv)
 {
+
+    if (argc < 2)
+    {
+        printf("Al menos un argumento debe ser entregado\n");
+        // ERROR
+        return 0;
+    }
+
     cr_mount("memfilled.bin");
 
     int instruction = atoi(argv[1]);
@@ -23,14 +31,14 @@ int main(int argc, char **argv)
 
     else if (instruction == 2)
     {
-        int process_id = atoi(argv[2]);
-        printf("cr_ls_files(%i)\n", process_id);
-        cr_ls_files(process_id);
-    }
 
-    else if (instruction == 3)
-    {
-        //cr_exists(27, "nani");
+        if (argc != 4)
+        {
+            printf("./crms 2 [process_id] [file_name]\n");
+            // ERROR
+            return 0;
+        }
+
         int process_id = atoi(argv[2]);
         char file_name[256];
         strcpy(file_name, argv[3]);
@@ -38,15 +46,73 @@ int main(int argc, char **argv)
         printf("cr_exists(%i, %s) = %i\n", process_id, file_name, result);
     }
 
-    else if (instruction == 4) //txt en consola
+    else if (instruction == 3)
     {
+
+        if (argc != 3)
+        {
+            printf("./crms 3 [process_id]\n");
+            // ERROR
+            return 0;
+        }
+
         int process_id = atoi(argv[2]);
-        char name[12];
-        strcpy(name, argv[3]);
+        printf("cr_ls_files(%i)\n", process_id);
+        cr_ls_files(process_id);
+    }
+
+    else if (instruction == 4)
+    {
+
+        if (argc != 4)
+        {
+            printf("./crms 4 [process_id] [process_name]\n");
+            // ERROR
+            return 0;
+        }
+
+        int process_id = atoi(argv[2]);
+        char process_name[256];
+        strcpy(process_name, argv[3]);
+        cr_start_process(process_id, process_name);
+        //cr_ls_process();
+    }
+
+    else if (instruction == 5)
+    {
+
+        if (argc != 3)
+        {
+            printf("./crms 5 [process_id]\n");
+            // ERROR
+            return 0;
+        }
+
+        int process_id = atoi(argv[2]);
+        cr_finish_process(process_id);
+        //cr_ls_process();
+    }
+
+
+    else if (instruction == 6) // en consola
+    {
+
+        if (argc != 5)
+        {
+            printf("./crms 6 [process_id] [file_name] [bytes_to_read]\n");
+            // ERROR
+            return 0;
+        }
+
+        int process_id = atoi(argv[2]);
+        char file_name[12];
+        strcpy(file_name, argv[3]);
         int bytes_to_read = atoi(argv[4]);
 
         uint8_t* buffer = malloc(bytes_to_read * sizeof(uint8_t));
-        int bytes_read = cr_read(cr_open(process_id, name, 'r'), buffer, bytes_to_read);
+        CrmsFile* file = cr_open(process_id, file_name, 'r');
+        int bytes_read = cr_read(file, buffer, bytes_to_read);
+        cr_close(file);
 
         printf("Esto es bytes_read %i\n", bytes_read);
         for(int i = 0; i < bytes_read; i++)
@@ -58,19 +124,29 @@ int main(int argc, char **argv)
         free(buffer);
     }
 
-    else if (instruction == 5) //jpg
+    else if (instruction == 7)
     {
+
+        if (argc != 5)
+        {
+            printf("./crms 7 [process_id] [file_name] [bytes_to_read]\n");
+            // ERROR
+            return 0;
+        }
+
         int process_id = atoi(argv[2]);
-        char name[12];
-        strcpy(name, argv[3]);
+        char file_name[12];
+        strcpy(file_name, argv[3]);
         int bytes_to_read = atoi(argv[4]);
 
         uint8_t* buffer = malloc(bytes_to_read * sizeof(uint8_t));
-        int bytes_read = cr_read(cr_open(process_id, name, 'r'), buffer, bytes_to_read);
+        CrmsFile* file = cr_open(process_id, file_name, 'r');
+        int bytes_read = cr_read(file, buffer, bytes_to_read);
+        cr_close(file);
 
         printf("Esto es bytes_read %i\n", bytes_read);
         
-        FILE* new = fopen("new.jpg", "wb+");
+        FILE* new = fopen(file_name, "wb+");
         fwrite(buffer, 1, bytes_read, new);
         fclose(new);
 
@@ -78,146 +154,38 @@ int main(int argc, char **argv)
 
     }
 
-    else if (instruction == 6) //wav
+    else if (instruction == 8)
     {
+
+        if (argc != 5)
+        {
+            printf("./crms 8 [process_id] [file_name] [bytes_to_write]\n");
+            // ERROR
+            return 0;
+        }
+
         int process_id = atoi(argv[2]);
-        char name[12];
-        strcpy(name, argv[3]);
-        int bytes_to_read = atoi(argv[4]);
+        char file_name[12];
+        strcpy(file_name, argv[3]);
+        int bytes_to_write = atoi(argv[4]);
 
-        uint8_t* buffer = malloc(bytes_to_read * sizeof(uint8_t));
-        int bytes_read = cr_read(cr_open(process_id, name, 'r'), buffer, bytes_to_read);
+        uint8_t* buffer = malloc(bytes_to_write * sizeof(uint8_t));
+        FILE* old = fopen(file_name, "rb");
+        bytes_to_write = fread(buffer, 1, bytes_to_write, old);
+        fclose(old);
 
-        printf("Esto es bytes_read %i\n", bytes_read);
-        
-        FILE* new = fopen("new.wav", "wb+");
-        fwrite(buffer, 1, bytes_read, new);
-        fclose(new);
+        CrmsFile* file = cr_open(process_id, file_name, 'w');
+        int bytes_written = cr_write_file(file, buffer, bytes_to_write);
+        cr_close(file);
+
+        printf("Esto es bytes_read %i\n", bytes_written);
+
 
         free(buffer);
 
     }
 
-    else if (instruction == 7) //mp4
-    {
-        int process_id = atoi(argv[2]);
-        char name[12];
-        strcpy(name, argv[3]);
-        int bytes_to_read = atoi(argv[4]);
+    cr_unmount();
 
-        uint8_t* buffer = malloc(bytes_to_read * sizeof(uint8_t));
-        int bytes_read = cr_read(cr_open(process_id, name, 'r'), buffer, bytes_to_read);
-
-        printf("Esto es bytes_read %i\n", bytes_read);
-        
-        FILE* new = fopen("new.mp4", "wb+");
-        fwrite(buffer, 1, bytes_read, new);
-        fclose(new);
-
-        free(buffer);
-
-    }
-
-    else if (instruction == 8) //mkv
-    {
-        int process_id = atoi(argv[2]);
-        char name[12];
-        strcpy(name, argv[3]);
-        int bytes_to_read = atoi(argv[4]);
-
-        uint8_t* buffer = malloc(bytes_to_read * sizeof(uint8_t));
-        int bytes_read = cr_read(cr_open(process_id, name, 'r'), buffer, bytes_to_read);
-
-        printf("Esto es bytes_read %i\n", bytes_read);
-        
-        FILE* new = fopen("new.mkv", "wb+");
-        fwrite(buffer, 1, bytes_read, new);
-        fclose(new);
-
-        free(buffer);
-
-    }
-
-    else if (instruction == 9) //txt
-    {
-        int process_id = atoi(argv[2]);
-        char name[12];
-        strcpy(name, argv[3]);
-        int bytes_to_read = atoi(argv[4]);
-
-        uint8_t* buffer = malloc(bytes_to_read * sizeof(uint8_t));
-        int bytes_read = cr_read(cr_open(process_id, name, 'r'), buffer, bytes_to_read);
-
-        printf("Esto es bytes_read %i\n", bytes_read);
-        
-        FILE* new = fopen("new.txt", "wb+");
-        fwrite(buffer, 1, bytes_read, new);
-        fclose(new);
-
-        free(buffer);
-
-    }
-
-    else if (instruction == 10) //png
-    {
-        int process_id = atoi(argv[2]);
-        char name[12];
-        strcpy(name, argv[3]);
-        int bytes_to_read = atoi(argv[4]);
-
-        uint8_t* buffer = malloc(bytes_to_read * sizeof(uint8_t));
-        int bytes_read = cr_read(cr_open(process_id, name, 'r'), buffer, bytes_to_read);
-
-        printf("Esto es bytes_read %i\n", bytes_read);
-        
-        FILE* new = fopen("new.png", "wb+");
-        fwrite(buffer, 1, bytes_read, new);
-        fclose(new);
-
-        free(buffer);
-
-    }
-
-    else if (instruction == 11) //bin
-    {
-        int process_id = atoi(argv[2]);
-        char name[12];
-        strcpy(name, argv[3]);
-        int bytes_to_read = atoi(argv[4]);
-
-        uint8_t* buffer = malloc(bytes_to_read * sizeof(uint8_t));
-        int bytes_read = cr_read(cr_open(process_id, name, 'r'), buffer, bytes_to_read);
-
-        printf("Esto es bytes_read %i\n", bytes_read);
-        
-        FILE* new = fopen("new.bin", "wb+");
-        fwrite(buffer, 1, bytes_read, new);
-        fclose(new);
-
-        free(buffer);
-
-    }
-
-    else if (instruction == 12)
-    {
-        //cr_start_process(26, "Raulitoteamo");
-        int process_id = atoi(argv[2]);
-        char name[256];
-        strcpy(name, argv[3]);
-        cr_start_process(process_id, name);
-        cr_ls_process();
-    }
-
-    //cr_ls_files(27);
-    //cr_finish_process(25);
-    //cr_open(27, "billetedeluk", 'w');
-    //cr_ls_files(27);
-    
-    //amogus.mp4
-    //grub.mp4
-    //drums.mp4
-    //knowledg.jpg
-    //nightcal.mp4
-    //popcorn.mkv
 }
 
