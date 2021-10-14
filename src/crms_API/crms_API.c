@@ -17,9 +17,49 @@ PCB* pcb_table[16];
 // https://stackoverflow.com/questions/48538425/c-modify-global-char-array
 char file_direction[];
 
-// definicion de variables de errores
-extern int errno;
-enum error {esrch, erange, ebusy, eperm, enomen, enospc, erwfs, enoent, erofs, eilseq, eaddrnotavail};
+//Funcion de errores
+void cr_strerror(CR_ERROR error)
+{
+    switch (error) {
+        
+    case 1:
+        fprintf(stderr, "Value of errno: %d\n", error);
+        fprintf(stderr, "Error: %s\n", strerror( error ));
+        printf("La operación que quieres realizar no está permitida. \n");
+        break;
+    case 2:
+        fprintf(stderr, "Value of errno: %d\n", error);
+        fprintf(stderr, "Error: %s\n", strerror( error ));
+        printf("El archivo que buscas no existe.\n");
+        break;
+    case 3:
+        fprintf(stderr, "Value of errno: %d\n", error);
+        fprintf(stderr, "Error: %s\n", strerror( error ));
+        printf("El proceso con ese ID no existe.\n");
+        break;
+    case 28:
+        fprintf(stderr, "Value of errno: %d\n", error);
+        fprintf(stderr, "Error: %s\n", strerror( error ));
+        printf("No hay espacio suficiente para realizar la operación. \n");
+        break;
+    case 34:
+        fprintf(stderr, "Value of errno: %d\n", error);
+        fprintf(stderr, "Error: %s\n", strerror( error ));
+        printf("El proceso que quieres iniciar tiene un ID muy grande. \n");
+        break;
+    case 84:
+        fprintf(stderr, "Value of errno: %d\n", error);
+        fprintf(stderr, "Error: %s\n", strerror( error ));
+        printf("N° de bytes inválidos. \n");
+        break;
+    case 99:
+        fprintf(stderr, "Value of errno: %d\n", error);
+        fprintf(stderr, "Error: %s\n", strerror( error ));
+        printf("La página de direccion virtual no tiene frame asignado. \n");
+        break;
+    }
+}
+
 
 void name_assign(char* destination, char* origin)//Funcion auxiliar para asignar nombres
 {
@@ -222,6 +262,7 @@ int cr_exists(int process_id, char* file_name)
         }
     }
     
+    cr_strerror(not_proc);
     //ERROR -> Levantar un error porque el proceso no existe  // errno ESRCH No such process
     return 0;
 }
@@ -259,7 +300,8 @@ void cr_ls_files(int process_id)
     }
     if (process_found == 0)
     {
-        // levantar error
+        cr_strerror(not_proc);
+        // levantar error porque no hiciste proceso de ese id
     }
 }
   
@@ -271,7 +313,7 @@ void cr_start_process(int process_id, char* process_name)
     {
         //ERROR
         // ERANGE Numerical result out of range
-        printf("El proceso que quieres iniciar tiene un id muy grande WARNING!!!!!!!!!!!!\n");
+        cr_strerror(num_range);
         return;
     }
 
@@ -283,7 +325,7 @@ void cr_start_process(int process_id, char* process_name)
         {
             // ERROR Levantar error
             // EPERM Operation not permitted
-            printf("El proceso que quieres iniciar ya está iniciado uwu WARNING!!!!!!!!!!!!\n");
+            cr_strerror(not_op);
             return;
         }
         else if (pcb_table[index]->state == 0x00 && available_space == -1)
@@ -313,7 +355,7 @@ void cr_start_process(int process_id, char* process_name)
     {
         // ERROR Levantar error, no cabe otro proceso
         // ENOSPC No space left on device
-        printf("Borrar este print");
+        cr_strerror(not_space);
     }
 }
 
@@ -367,7 +409,7 @@ void cr_finish_process(int process_id)
     {
         //ERROR
         // ESRCH No such process
-        printf("No existe un proceso con ese ID");
+        cr_strerror(not_proc);
     }
 }
 
@@ -442,6 +484,8 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
 
                             if (pcb_table[process]->files[file]->mode != '-')
                             {
+                                cr_strerror(not_op);
+                                return NULL;
                                 //ERROR, el archivo ya está abierto en algún modo
                                 // ERWFS  Write-only file system
                             }
@@ -454,6 +498,10 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                     }
                     // ERROR El archivo no existe
                     // ENOENT No such file or directory
+                    
+                    cr_strerror(not_file);
+
+                    return NULL;
                     break;
                     
                 case 'w':;
@@ -463,8 +511,8 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                     {
                         if (pcb_table[process]->files[file]->validity == 0x01 && name_coincidence(pcb_table[process]->files[file]->name, file_name))
                         {
-                            // ERROR, el archivo ya está abierto en algún modo
-                            // EROFS  Read-only file system
+                            cr_strerror(not_op);
+                            // ERROR, el archivo ya está abierto en algún mod
                             /* CR_ERROR = 6;
                             cr_sterror(6); */
                             return NULL; // OJO
@@ -477,6 +525,8 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
 
                     if (available_space == -1)
                     {
+                        cr_strerror(not_space);
+                        return NULL;
                         // ERROR ya hay 10 archivos
                         // ENOMEM Cannot allocate memory or ENOSPC No space left on device
                     }
@@ -506,6 +556,8 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
             }
         }
     }
+
+    cr_strerror(not_proc);
     // ERROR El proceso no existe
     // ESRCH No such process
     return NULL;
@@ -612,6 +664,7 @@ int cr_write_file(CrmsFile* file_desc, void* buffer, int n_bytes)
 
     }
 
+    cr_strerror(not_byte);
     // ERROR n_bytes invalido
     // EILSEQ Invalid or incomplete multibyte or wide character
     return 0;
@@ -660,9 +713,9 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
 
     if (valid == 0)
     {
+        cr_strerror(not_assign);
         // ERROR, pagina de direccion virtual no tiene frame asignado
         // EADDRNOTAVAIL Cannot assign requested address
-        printf("ERROR, pagina de direccion virtual no tiene frame asignado");
         return -1;
     }
 
@@ -723,10 +776,9 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
 
                 if (valid == 0)
                 {
+                    cr_strerror(not_assign);
                     // ERROR, pagina de direccion virtual no tiene frame asignado
                     // EADDRNOTAVAIL Cannot assign requested address
-                    printf("NUNCA DEBERIAMOS LLEGAR AQUI");
-                    printf("ERROR, pagina de direccion virtual no tiene frame asignado");
                     return -1;
                 }
 
@@ -953,6 +1005,7 @@ void cr_close(CrmsFile* file_desc)
     }
     else
     {
+        cr_strerror(not_op);
         // Error el archivo esta cerrado
     }
     
@@ -967,8 +1020,3 @@ void cr_unmount()
 }
 
 
-//Funcion de errores
-void cr_strerror(int error)
-{
-    // printear error
-}

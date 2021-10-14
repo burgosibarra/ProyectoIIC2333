@@ -23,13 +23,13 @@ int main(int argc, char **argv)
 
     int instruction = atoi(argv[1]);
 
-    if (instruction == 1)
+    if (instruction == 1) //listar procesos ./crms 1 
     {
         printf("cr_ls_process()\n");
         cr_ls_process();
     }
 
-    else if (instruction == 2)
+    else if (instruction == 2) //recibe 4 arg crms 2 proceso_id nombre
     {
 
         if (argc != 4)
@@ -47,7 +47,7 @@ int main(int argc, char **argv)
         printf("cr_exists(%i, %s) = %i\n", process_id, file_name, result);
     }
 
-    else if (instruction == 3)
+    else if (instruction == 3) // Lista de archivos del proceso ./crms 3 proceso_id 
     {
 
         if (argc != 3)
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
         cr_ls_files(process_id);
     }
 
-    else if (instruction == 4)
+    else if (instruction == 4) // incia procesocrms 4 proceso_id nombre
     {
 
         if (argc != 4)
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
         //cr_ls_process();
     }
 
-    else if (instruction == 5)
+    else if (instruction == 5) // Finaliza proceso ./crms 5 proceso id
     {
 
         if (argc != 3)
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
     }
 
 
-    else if (instruction == 6) // en consola
+    else if (instruction == 6) // en consola abre archivo ./crms 6 proceso_id nombre bytes_decimal
     {
 
         if (argc != 5)
@@ -129,7 +129,7 @@ int main(int argc, char **argv)
         free(buffer);
     }
 
-    else if (instruction == 7)
+    else if (instruction == 7) // lee archivos ./crms 7 proceso_id 
     {
 
         if (argc != 5)
@@ -147,20 +147,21 @@ int main(int argc, char **argv)
 
         uint8_t* buffer = malloc(bytes_to_read * sizeof(uint8_t));
         CrmsFile* file = cr_open(process_id, file_name, 'r');
-        int bytes_read = cr_read(file, buffer, bytes_to_read);
-        cr_close(file);
+        if (file != NULL)
+            { 
+            int bytes_read = cr_read(file, buffer, bytes_to_read);
+            cr_close(file);
 
-        printf("Esto es bytes_read %i\n", bytes_read);
-        
-        FILE* new = fopen(file_name, "wb+");
-        fwrite(buffer, 1, bytes_read, new);
-        fclose(new);
-
+            printf("Esto es bytes_read %i\n", bytes_read);
+            
+            FILE* new = fopen(file_name, "wb+");
+            fwrite(buffer, 1, bytes_read, new);
+            fclose(new);
+        }
         free(buffer);
-
     }
 
-    else if (instruction == 8)
+    else if (instruction == 8) // escribe un archivo
     {
 
         if (argc != 5)
@@ -182,22 +183,22 @@ int main(int argc, char **argv)
         fclose(old);
 
         CrmsFile* file = cr_open(process_id, file_name, 'w');
-        int bytes_written = cr_write_file(file, buffer, bytes_to_write);
-        cr_close(file);
-
-        printf("Esto es bytes_read %i\n", bytes_written);
-
-
+        if (file != NULL)
+        { 
+            int bytes_written = cr_write_file(file, buffer, bytes_to_write);
+            cr_close(file);
+            printf("Esto es bytes_read %i\n", bytes_written);
+        }
         free(buffer);
 
     }
 
-else if (instruction == 9)
+else if (instruction == 9) //borrar 
     {
 
         if (argc != 4)
         {
-            printf("./crms 8 [process_id] [file_name]\n");
+            printf("./crms 9 [process_id] [file_name]\n");
             cr_unmount();
             // ERROR
             return 0;
@@ -208,8 +209,10 @@ else if (instruction == 9)
         strcpy(file_name, argv[3]);
 
         CrmsFile* file = cr_open(process_id, file_name, 'r');
-        cr_delete_file(file);
-
+        if (file != NULL)
+        {
+            cr_delete_file(file);
+        }
     }
 
     cr_unmount();

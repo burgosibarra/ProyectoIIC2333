@@ -9,6 +9,12 @@
 #include "PageTable.h"
 #include "mergeSort.h"
 
+// definicion de variables de errores
+typedef enum error {
+    not_op=1, not_file=2, not_proc=3, 
+    not_space=28, num_range=34, 
+    not_byte=84, not_assign=99
+    } CR_ERROR;
 
 struct crmsfile;
 
@@ -37,6 +43,8 @@ struct pcb
     CrmsFile** files;
     PageTable* page_table;
 };
+
+
 
 /*
 PCB* pcb_table[16];
@@ -71,4 +79,4 @@ void cr_delete_file(CrmsFile* file_desc);
 void cr_close(CrmsFile* file_desc);
 
 //Funcion de errores
-void cr_strerror(int error);
+void cr_strerror(CR_ERROR error);
