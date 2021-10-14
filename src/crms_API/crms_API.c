@@ -1,5 +1,7 @@
 //FUNCIONES GENERALES
 #include "crms_API.h"
+#include <errno.h>
+#include <stdio.h>
 
 const int FILE_NAME_SIZE = 12;
 const int PROCESS_AMOUNT = 16;
@@ -14,6 +16,10 @@ const int PROCESS_FILE_MAX_SIZE = 32 * 1024 * 1024;
 PCB* pcb_table[16];
 // https://stackoverflow.com/questions/48538425/c-modify-global-char-array
 char file_direction[];
+
+// definicion de variables de errores
+extern int errno;
+enum error {esrch, erange, ebusy, eperm, enomen, enospc, erwfs, enoent, erofs, eilseq, eaddrnotavail};
 
 void name_assign(char* destination, char* origin)//Funcion auxiliar para asignar nombres
 {
@@ -216,7 +222,7 @@ int cr_exists(int process_id, char* file_name)
         }
     }
     
-    //ERROR -> Levantar un error porque el proceso no existe
+    //ERROR -> Levantar un error porque el proceso no existe  // errno ESRCH No such process
     return 0;
 }
 
@@ -261,44 +267,52 @@ void cr_ls_files(int process_id)
 //FUNCIONES PROCESOS
 void cr_start_process(int process_id, char* process_name)
 {
+    if (process_id > 255)
+    {
+        //ERROR
+        // ERANGE Numerical result out of range
+        printf("El proceso que quieres iniciar tiene un id muy grande WARNING!!!!!!!!!!!!\n");
+        return;
+    }
+
+    int available_space = -1;
+
     for (int index = 0; index < PROCESS_AMOUNT; index++)
     {
         if (pcb_table[index]->state == 0x01 && pcb_table[index]->id == process_id)
         {
             // ERROR Levantar error
+            // EPERM Operation not permitted
             printf("El proceso que quieres iniciar ya está iniciado uwu WARNING!!!!!!!!!!!!\n");
             return;
         }
-    }
-    int process_created = 0; //Para saber si ya podemos crearlo
-    for (int index = 0; index < PROCESS_AMOUNT; index++)
-    {
-        if (pcb_table[index]->state == 0x00 && process_created == 0) //Si no esta creado, y se puede crear en este espacio
+        else if (pcb_table[index]->state == 0x00 && available_space == -1)
         {
-            process_created = 1;
-
-            pcb_create(pcb_table[index], 0x01, process_id, process_name); //Creamos el proceso en tabla pcb
-            FILE* memory = fopen(file_direction, "rb+");
-
-            fseek(memory, PCB_SIZE * index, SEEK_SET);
-            fwrite(&(pcb_table[index]->state), 1, 1, memory);//Escribimos en memoria física
-            fwrite(&(pcb_table[index]->id), 1, 1, memory); 
-            for (int char_name = 0; char_name < NAME_SIZE; char_name++)
-            {
-                fwrite(&(pcb_table[index]->name[char_name]), 1, 1, memory);
-            }
-            uint8_t aux = 0x00;
-            fwrite(&aux, 1, 242, memory);//Llenamos los 242 bytes de 0x00
-
-            fclose(memory);
-
-            break;
+            available_space = index;
         }
     }
+    
+    if (available_space != -1)
+    {
+        pcb_create(pcb_table[available_space], 0x01, process_id, process_name); //Creamos el proceso en tabla pcb
+        FILE* memory = fopen(file_direction, "rb+");
+        int aux_variable = PCB_SIZE * available_space;
+        fseek(memory, aux_variable, SEEK_SET);
+        fwrite(&(pcb_table[available_space]->state), 1, 1, memory);//Escribimos en memoria física
+        fwrite(&(pcb_table[available_space]->id), 1, 1, memory); 
+        for (int char_name = 0; char_name < NAME_SIZE; char_name++)
+        {
+            fwrite(&(pcb_table[available_space]->name[char_name]), 1, 1, memory);
+        }
+        uint8_t aux = 0x00;
+        fwrite(&aux, 1, 242, memory);//Llenamos los 242 bytes de 0x00
 
-    if (process_created == 0)
+        fclose(memory);
+    }
+    else
     {
         // ERROR Levantar error, no cabe otro proceso
+        // ENOSPC No space left on device
         printf("Borrar este print");
     }
 }
@@ -352,6 +366,7 @@ void cr_finish_process(int process_id)
     if (i==16)
     {
         //ERROR
+        // ESRCH No such process
         printf("No existe un proceso con ese ID");
     }
 }
@@ -365,7 +380,7 @@ void virtual_address_calculator(CrmsFile* file_desc, int file_size) //Calculamos
 
     for (int file = 0; file < PROCESS_FILES_AMOUNT; file++)
     {
-        if ((pcb->files[file]->validity) == 0x01)
+        if ((pcb->files[file]->validity) == 0x01 && name_coincidence(file_desc->name, pcb->files[file]->name) == 0)
         {
             virtual_addresses_used[file] = (int) pcb->files[file]->start_address;
             sized_used[file] = (int) pcb->files[file]->file_size;
@@ -428,6 +443,7 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                             if (pcb_table[process]->files[file]->mode != '-')
                             {
                                 //ERROR, el archivo ya está abierto en algún modo
+                                // ERWFS  Write-only file system
                             }
                             else
                             {
@@ -437,6 +453,7 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                         }
                     }
                     // ERROR El archivo no existe
+                    // ENOENT No such file or directory
                     break;
                     
                 case 'w':;
@@ -447,6 +464,7 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                         if (pcb_table[process]->files[file]->validity == 0x01 && name_coincidence(pcb_table[process]->files[file]->name, file_name))
                         {
                             // ERROR, el archivo ya está abierto en algún modo
+                            // EROFS  Read-only file system
                             /* CR_ERROR = 6;
                             cr_sterror(6); */
                             return NULL; // OJO
@@ -460,6 +478,7 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                     if (available_space == -1)
                     {
                         // ERROR ya hay 10 archivos
+                        // ENOMEM Cannot allocate memory or ENOSPC No space left on device
                     }
 
                                        
@@ -488,7 +507,8 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
         }
     }
     // ERROR El proceso no existe
-
+    // ESRCH No such process
+    return NULL;
 }
 
 int available_frame()
@@ -586,13 +606,14 @@ int cr_write_file(CrmsFile* file_desc, void* buffer, int n_bytes)
         {
             fwrite(&(((uint8_t*) buffer)[bytes_written]), 1, (8 * 1024 * 1024) - offset, memory);
             bytes_written = bytes_written + (8 * 1024 * 1024) - offset;
-            virtual_dir = virtual_dir + bytes_written;
+            virtual_dir = virtual_dir + ((8 * 1024 * 1024) - offset);
         }
 
 
     }
 
     // ERROR n_bytes invalido
+    // EILSEQ Invalid or incomplete multibyte or wide character
     return 0;
 }
 
@@ -640,8 +661,9 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
     if (valid == 0)
     {
         // ERROR, pagina de direccion virtual no tiene frame asignado
+        // EADDRNOTAVAIL Cannot assign requested address
         printf("ERROR, pagina de direccion virtual no tiene frame asignado");
-        return;
+        return -1;
     }
 
     PFN = page & pfn_mask;
@@ -671,7 +693,8 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
         {
             /*leemos lo que podamos*/
             if (bytes_read == 0) // si es el primer frame
-            { 
+            {
+                fseek(memory, offset, SEEK_CUR); // avanzamos el offset
                 //fread(buffer_aux, (8 * 1024 * 1024) - offset, 1, memory);
                 fread((uint8_t*) buffer, 1, (8 * 1024 * 1024) - offset, memory);
                 bytes_read = bytes_read + ((8 * 1024 * 1024) - offset);
@@ -701,9 +724,10 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
                 if (valid == 0)
                 {
                     // ERROR, pagina de direccion virtual no tiene frame asignado
+                    // EADDRNOTAVAIL Cannot assign requested address
                     printf("NUNCA DEBERIAMOS LLEGAR AQUI");
                     printf("ERROR, pagina de direccion virtual no tiene frame asignado");
-                    return;
+                    return -1;
                 }
 
                 PFN = page & pfn_mask;
@@ -725,6 +749,117 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
 void cr_delete_file(CrmsFile* file_desc)
 {
     
+    PCB* pcb = file_desc -> pcb;
+
+    int virtual_addresses_used[PROCESS_FILES_AMOUNT];
+    int sized_used[PROCESS_FILES_AMOUNT];
+
+    int file_position = 0;
+    for (int file = 0; file < PROCESS_FILES_AMOUNT; file++)
+    {
+        if ((pcb->files[file]->validity) == 0x01)
+        {
+            virtual_addresses_used[file] = (int) pcb->files[file]->start_address;
+            sized_used[file] = (int) pcb->files[file]->file_size;
+            
+            if (name_coincidence(pcb->files[file]->name, file_desc->name))
+            {
+                file_position = file;
+            }
+        }
+        else
+        {
+            virtual_addresses_used[file] = -1;
+            sized_used[file] = -1;
+        }
+    }
+
+    mergeSort(virtual_addresses_used, sized_used, 0, PROCESS_FILES_AMOUNT - 1);
+    int prev_address;
+    int prev_sized;
+    int next;
+    for (int file = 0; file < PROCESS_FILES_AMOUNT; file++)
+    {
+        if (virtual_addresses_used[file] == (int) file_desc -> start_address)
+        {
+            if (file == 0)
+            {
+                prev_address = -1;
+                next = virtual_addresses_used[1];
+            }
+            else if (file == PROCESS_FILES_AMOUNT - 1)
+            {
+                prev_address = virtual_addresses_used[PROCESS_FILES_AMOUNT - 1 - 1];
+                prev_sized = sized_used[PROCESS_FILES_AMOUNT - 1 - 1];
+                next = -1;
+            }
+            else
+            {
+                prev_address = virtual_addresses_used[file - 1];
+                prev_sized = sized_used[file - 1];
+                next = virtual_addresses_used[file + 1];
+            }
+            break;
+        }
+    }
+
+    uint8_t VPN = ((file_desc -> start_address) & 0b00001111100000000000000000000000) >> 23;
+    int last_dir = (file_desc -> start_address + file_desc -> file_size);
+    uint8_t last_VPN = (last_dir & 0b00001111100000000000000000000000) >> 23;
+
+
+    if (prev_address != -1)
+    {
+        prev_address = prev_address + prev_sized;
+        uint8_t prev_VPN = (prev_address & 0b00001111100000000000000000000000) >> 23;
+        if (VPN == prev_VPN)
+        {
+            VPN = VPN + 1;
+        }
+
+    }
+
+    if (next != -1)
+    {
+        uint8_t next_VPN = (next & 0b00001111100000000000000000000000) >> 23;
+        if (last_VPN == next_VPN)
+        {
+            last_VPN = last_VPN - 1;
+        }
+    }
+
+    int pcb_position;
+    for (int i = 0; i < PROCESS_AMOUNT; i++)
+    {
+        if (pcb_table[i] -> state == 0x01 && pcb_table[i] -> id == pcb->id)
+        {
+            pcb_position = i;
+            break;
+        }
+    }
+
+    FILE* memory = fopen(file_direction, "rb+");
+    
+    fseek(memory, pcb_position * PCB_SIZE + 14 + 21 * file_position, SEEK_SET);
+    uint8_t new_validity = 0x00;
+    fwrite(&new_validity, 1, 1, memory);
+    for (int page = VPN; page < last_VPN + 1; page++)
+    {
+        fseek(memory, PROCESS_AMOUNT * PCB_SIZE, SEEK_SET);
+        uint8_t frame = (pcb -> page_table -> entries[page]) & 0b01111111;
+        fseek(memory, (int) frame / 8, SEEK_CUR);
+        uint8_t to_replace;
+        fread(&to_replace, 1, 1, memory);
+        fseek(memory, -1, SEEK_CUR);
+        to_replace = to_replace  ^ (0b10000000 >> (frame % 8));
+        fwrite(&to_replace, 1, 1, memory);
+
+        fseek(memory, PCB_SIZE * pcb_position + 224 + page, SEEK_SET);
+        pcb -> page_table -> entries[page] = 0b00000000;
+        fwrite(&(pcb -> page_table -> entries[page]), 1, 1, memory);
+    }
+    fclose(memory);
+    file_desc -> validity = 0x00;
 }
 
 //Funcion para cerrar archivo
@@ -818,7 +953,7 @@ void cr_close(CrmsFile* file_desc)
     }
     else
     {
-        // Error
+        // Error el archivo esta cerrado
     }
     
 }
@@ -829,4 +964,11 @@ void cr_unmount()
     {
         pcb_destroy(pcb_table[pcb]);
     }
+}
+
+
+//Funcion de errores
+void cr_strerror(int error)
+{
+    // printear error
 }

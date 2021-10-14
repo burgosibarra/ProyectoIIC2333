@@ -35,6 +35,7 @@ int main(int argc, char **argv)
         if (argc != 4)
         {
             printf("./crms 2 [process_id] [file_name]\n");
+            cr_unmount();
             // ERROR
             return 0;
         }
@@ -52,6 +53,7 @@ int main(int argc, char **argv)
         if (argc != 3)
         {
             printf("./crms 3 [process_id]\n");
+            cr_unmount();
             // ERROR
             return 0;
         }
@@ -67,6 +69,7 @@ int main(int argc, char **argv)
         if (argc != 4)
         {
             printf("./crms 4 [process_id] [process_name]\n");
+            cr_unmount();
             // ERROR
             return 0;
         }
@@ -84,6 +87,7 @@ int main(int argc, char **argv)
         if (argc != 3)
         {
             printf("./crms 5 [process_id]\n");
+            cr_unmount();
             // ERROR
             return 0;
         }
@@ -100,6 +104,7 @@ int main(int argc, char **argv)
         if (argc != 5)
         {
             printf("./crms 6 [process_id] [file_name] [bytes_to_read]\n");
+            cr_unmount();
             // ERROR
             return 0;
         }
@@ -130,6 +135,7 @@ int main(int argc, char **argv)
         if (argc != 5)
         {
             printf("./crms 7 [process_id] [file_name] [bytes_to_read]\n");
+            cr_unmount();
             // ERROR
             return 0;
         }
@@ -160,6 +166,7 @@ int main(int argc, char **argv)
         if (argc != 5)
         {
             printf("./crms 8 [process_id] [file_name] [bytes_to_write]\n");
+            cr_unmount();
             // ERROR
             return 0;
         }
@@ -182,6 +189,26 @@ int main(int argc, char **argv)
 
 
         free(buffer);
+
+    }
+
+else if (instruction == 9)
+    {
+
+        if (argc != 4)
+        {
+            printf("./crms 8 [process_id] [file_name]\n");
+            cr_unmount();
+            // ERROR
+            return 0;
+        }
+
+        int process_id = atoi(argv[2]);
+        char file_name[12];
+        strcpy(file_name, argv[3]);
+
+        CrmsFile* file = cr_open(process_id, file_name, 'r');
+        cr_delete_file(file);
 
     }
 

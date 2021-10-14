@@ -69,3 +69,6 @@ int cr_write_file(CrmsFile* file_desc, void* buffer, int n_bytes);
 int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes);
 void cr_delete_file(CrmsFile* file_desc);
 void cr_close(CrmsFile* file_desc);
+
+//Funcion de errores
+void cr_strerror(int error);
