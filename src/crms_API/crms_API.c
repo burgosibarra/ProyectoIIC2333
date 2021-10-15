@@ -68,7 +68,7 @@ void name_assign(char* destination, char* origin)//Funcion auxiliar para asignar
     {
         destination[index] = '\0';
     }
-    memmove(destination, origin, NAME_SIZE);
+    strncpy(destination, origin, NAME_SIZE);
 }
 
 CrmsFile* crmsfile_init(PCB* pcb)
@@ -232,7 +232,7 @@ void cr_ls_process()
 
 int name_coincidence(char* file_name_found, char* file_name)
 {
-    if (strcmp(file_name_found, file_name) == 0)
+    if (strncmp(file_name_found, file_name, NAME_SIZE) == 0)
     {
         return 1;
     }
@@ -341,13 +341,17 @@ void cr_start_process(int process_id, char* process_name)
         int aux_variable = PCB_SIZE * available_space;
         fseek(memory, aux_variable, SEEK_SET);
         fwrite(&(pcb_table[available_space]->state), 1, 1, memory);//Escribimos en memoria física
-        fwrite(&(pcb_table[available_space]->id), 1, 1, memory); 
+        fwrite(&(pcb_table[available_space]->id), 1, 1, memory);
+
         for (int char_name = 0; char_name < NAME_SIZE; char_name++)
         {
             fwrite(&(pcb_table[available_space]->name[char_name]), 1, 1, memory);
         }
         uint8_t aux = 0x00;
-        fwrite(&aux, 1, 242, memory);//Llenamos los 242 bytes de 0x00
+        for (int i = 0; i < 242; i++)
+        {
+            fwrite(&aux, 1, 1, memory);//Llenamos los 242 bytes de 0x00
+        }
 
         fclose(memory);
     }
@@ -543,8 +547,7 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                     uint8_t char_aux;
                     for (int char_name = 0; char_name < FILE_NAME_SIZE; char_name++)
                     {
-                        char_aux = (uint8_t) pcb_table[process]->files[available_space]->name[char_name];
-                        fwrite(&char_aux, 1, 1, memory);
+                        fwrite(&(pcb_table[process]->files[available_space]->name[char_name]), 1, 1, memory);
                     }
                     fwrite(&size, 4, 1, memory);
                     fwrite(&address, 4, 1, memory);

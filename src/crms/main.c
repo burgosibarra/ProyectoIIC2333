@@ -187,7 +187,7 @@ int main(int argc, char **argv)
         { 
             int bytes_written = cr_write_file(file, buffer, bytes_to_write);
             cr_close(file);
-            printf("Esto es bytes_read %i\n", bytes_written);
+            printf("Esto es bytes_write %i\n", bytes_written);
         }
         free(buffer);
 
