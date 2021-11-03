@@ -31,7 +31,7 @@ int main(int argc, char *argv[]){
   server_send_message(players_info->socket_c1, 1, welcome);
 
   // Guardaremos los sockets en un arreglo e iremos alternando a quién escuchar.
-  int sockets_array[2] = {players_info->socket_c1, players_info->socket_c2};
+  int sockets_array[4] = {players_info->socket_c1, players_info->socket_c2, players_info->socket_c3, players_info->socket_c4};
   int my_attention = 0;
   while (1)
   {
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]){
       // Le enviamos la respuesta
       server_send_message(sockets_array[my_attention], 1, response);
     }
-    else if (msg_code == 2){ //El cliente le envía un mensaje al otro cliente
+    /* else if (msg_code == 2){ //El cliente le envía un mensaje al otro cliente
       char * client_message = server_receive_payload(sockets_array[my_attention]);
       printf("Servidor traspasando desde %d a %d el mensaje: %s\n", my_attention+1, ((my_attention+1)%2)+1, client_message);
 
@@ -57,6 +57,10 @@ int main(int argc, char *argv[]){
       my_attention = (my_attention + 1) % 2;
 
       server_send_message(sockets_array[my_attention], 2, client_message);
+    } */
+    else if (msg_code == 255) //Termina tu turno
+    {
+      my_attention = (my_attention + 1) % 2;
     }
     printf("------------------\n");
   }

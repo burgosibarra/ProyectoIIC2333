@@ -20,7 +20,7 @@ char * get_input(){
 int main (int argc, char *argv[]){
   //Se obtiene la ip y el puerto donde está escuchando el servidor (la ip y puerto de este cliente da igual)
   char * IP = "0.0.0.0";
-  int PORT = 8080;
+  int PORT = 80; //Puede ser 22 u 80
 
   // Se prepara el socket
   int server_socket = prepare_socket(IP, PORT);
@@ -44,7 +44,7 @@ int main (int argc, char *argv[]){
       client_send_message(server_socket, option, response);
     }
 
-    if (msg_code == 2) { //Recibimos un mensaje que proviene del otro cliente
+    /* if (msg_code == 2) { //Recibimos un mensaje que proviene del otro cliente
       char * message = client_receive_payload(server_socket);
       printf("El otro cliente dice: %s\n", message);
       free(message);
@@ -57,7 +57,7 @@ int main (int argc, char *argv[]){
       char * response = get_input();
 
       client_send_message(server_socket, option, response);
-    }
+    } */
     printf("------------------\n");
   }
 

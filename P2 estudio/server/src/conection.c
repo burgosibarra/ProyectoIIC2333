@@ -18,13 +18,16 @@ PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port){
 
   // Se solicita un socket al SO, que se usará para escuchar conexiones entrantes
   int server_socket = socket(AF_INET, SOCK_STREAM, 0);
+  //AF_INET -> IPv4 Internet protocols
+  // SOCK_STREAM -> Provides sequenced, reliable, two-way, connection-based byte streams.  An out-of-band data transmission mechanism may be supported.
 
   // Se configura el socket a gusto (recomiendo fuertemente el REUSEPORT!)
   int opt = 1;
   int ret = setsockopt(server_socket, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
+  //SOL_SOCKET -> UDP 90% seguridad
 
   // Se guardan el puerto e IP en la estructura antes definida
-  memset(&server_addr, 0, sizeof(server_addr));
+  memset(&server_addr, 0, sizeof(server_addr)); //Llena con 0s tantas veces 
   server_addr.sin_family = AF_INET;
   inet_aton(IP, &server_addr.sin_addr);
   server_addr.sin_port = htons(port);
@@ -38,7 +41,10 @@ PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port){
   // Se definen las estructuras para almacenar info sobre los sockets de los clientes
   struct sockaddr_in client1_addr;
   struct sockaddr_in client2_addr;
+  struct sockaddr_in client3_addr;
+  struct sockaddr_in client4_addr;
   socklen_t addr_size = sizeof(client1_addr);
+  
 
   // Se inicializa una estructura propia para guardar los n°s de sockets de los clientes.
   PlayersInfo * sockets_clients = malloc(sizeof(PlayersInfo));
@@ -46,6 +52,8 @@ PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port){
   // Se aceptan a los primeros 2 clientes que lleguen. "accept" retorna el n° de otro socket asignado para la comunicación
   sockets_clients->socket_c1 = accept(server_socket, (struct sockaddr *)&client1_addr, &addr_size);
   sockets_clients->socket_c2 = accept(server_socket, (struct sockaddr *)&client2_addr, &addr_size);
+  sockets_clients->socket_c3 = accept(server_socket, (struct sockaddr *)&client3_addr, &addr_size);
+  sockets_clients->socket_c4 = accept(server_socket, (struct sockaddr *)&client4_addr, &addr_size);
 
   return sockets_clients;
 }
