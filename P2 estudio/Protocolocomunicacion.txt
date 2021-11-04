@@ -10,7 +10,8 @@ ID  |   PayloadSize |   Payload |   Descripción
 7   |   4+4           |   0 ó 1 ó 2 ó 3 ó 4 + 0 ó 1   | 2.5.6 Robar: robar a jugador 0/1/2/3/4 el recurso 0/1
 8   |   0           |   0   | 2.5.7 Pasar: pasa
 9   |   0           |   0   | 2.5.8 Rendirse: se rinde
-10  |   4 + 4 + 4*4 |      |
+10  |   4 + 4 + 4*4 |   0/1/2/3 + 0/1/2/3 + 0/1/2/3 + N1 + 0/1/2/3 + N2   | 4.2 Negociar: id_usuario_a_negociar + aceptar/rechazar/modificar(ofertar) + tipo_a_recibir + cantidad + tipo_a_entregar + cantidad
+
 
 
 
@@ -34,7 +35,13 @@ ID  |   PayloadSize |   Payload |   Descripción
 -------------------------------------------------------------------------------------------
 12  |   len(nombre) |   NOMBRE1 + 0/1|  NOMBRE1 (0-> perdió, 1->se retiró)
 13  |   0   |   0   |   Has ganado
+-------------------------------------------------------------------------------------------
+14  |   4 + 4 + 4*4 |   0/1/2/3 + 0/1/2/3 + 0/1/2/3 + N1 + 0/1/2/3 + N2   | 4.2 Negociar: id_usuario_a_negociar + aceptar/rechazar/modificar(ofertar) + tipo_a_recibir + cantidad + tipo_a_entregar + cantidad
+
+
+
 
 
 Dudas
-¿Qué pasa si alguien se cae? uwu
+¿Qué pasa si alguien se cae? 
+¿Solo se notifica a los otros jugadores si hay negociacion fallida?
