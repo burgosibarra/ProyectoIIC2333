@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "players.h"
 
 
@@ -148,6 +149,27 @@ void player_destroy(Player* player)
     free(player);
 }
 
+// 2.5.4 atacar
+int attack(Player* attacker, Player* defender)
+{
+    int att_force = attacker->warriors*attacker->attack_level;
+    int def_force = defender->warriors*defender->defense_level*2;
+    if (att_force > def_force)
+    {
+        attacker->food = attacker->food + defender->food;
+        attacker->gold = attacker->gold + defender->gold;
+        attacker->science = attacker->science + defender->science;
+        defender->food = 0;
+        defender->gold = 0;
+        defender->science = 0;
+        return 1;
+    }else if (att_force < def_force)
+    {
+        attacker->warriors = floor(attacker->warriors*0.5);
+        return 0;
+    }
+    
+}
 
 // 2.5.5 Espiar
 void spy(Player* player, Player* player_spied) 
@@ -157,4 +179,20 @@ void spy(Player* player, Player* player_spied)
     printf("Number of warriors: %i \n", player_spied -> warriors);
     printf("Attack Level: %i \n", player_spied -> attack_level);
     printf("Defense Level: %i \n", player_spied -> defense_level);
+}
+
+// 2.5.6 Robar
+void steal(Player* player, Player* player_robbed, int resource)
+{
+    player->science = player->science - 10;
+    if (resource == 0)
+    {
+        player->food = player_robbed->food*0.1;
+        player_robbed->food = player_robbed->food*0.9;
+    }
+    else if (resource == 1)
+    {
+        player->gold = player_robbed->gold*0.1;
+        player_robbed->gold = player_robbed->gold*0.9;
+    }
 }

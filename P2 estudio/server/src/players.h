@@ -27,3 +27,5 @@ void level_up(Player* player, int option);
 void collect_resources(Player* player);
 void create_villager(Player* player, int option);
 void player_destroy(Player* player);
+int attack(Player* attacker, Player* defender);
+void steal(Player* player, Player* player_robbed, int resource);
