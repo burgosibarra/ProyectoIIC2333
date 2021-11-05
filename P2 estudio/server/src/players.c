@@ -28,3 +28,14 @@ void player_destroy(Player* player)
 {
     free(player);
 }
+
+
+// 2.5.5 Espiar
+void spy(Player* player, Player* player_spied) 
+{
+    player -> gold -= 30;
+    printf("Spying on the player %s \n", player_spied -> name);
+    printf("Number of warriors: %i \n", player_spied -> warriors);
+    printf("Attack Level: %i \n", player_spied -> attack_level);
+    printf("Defense Level: %i \n", player_spied -> defense_level);
+}
