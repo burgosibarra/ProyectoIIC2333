@@ -38,7 +38,7 @@ void create_villager(Player* player, int option)// Se compra un aldeano, falta e
         if (player -> food >= 10)
         {
             player -> food -= 10; // Se descuenta recurso actual
-            player -> farmer +=1; //Se añade un agricultor
+            player -> farmers +=1; //Se añade un agricultor
         }
         else
         {
@@ -55,7 +55,7 @@ void create_villager(Player* player, int option)// Se compra un aldeano, falta e
         }
         else 
         {
-            printf("No tienes recursos suficientes para crear un minero")
+            printf("No tienes recursos suficientes para crear un minero");
         }
 
     }
@@ -69,7 +69,7 @@ void create_villager(Player* player, int option)// Se compra un aldeano, falta e
         }
         else 
         {
-            printf("No tienes recursos suficientes para crear un ingeniero")
+            printf("No tienes recursos suficientes para crear un ingeniero");
         }
     }
     else if (option == 4) //Se crea guerrero
@@ -82,14 +82,19 @@ void create_villager(Player* player, int option)// Se compra un aldeano, falta e
         }
         else 
         {
-            printf("No tienes recursos suficientes para crear un guerrero")
+            printf("No tienes recursos suficientes para crear un guerrero");
         }
     }
 }
 
 void level_up(Player* player, int option)
 {
-    int* options = player -> farmers_level, player -> miners_level, player -> engineers_level, player -> attack_level, player -> defense_level; 
+    int* options[5];
+    options[0] = player -> farmers_level;
+    options[1] =  player -> miners_level;
+    options[2] = player -> engineers_level;
+    options[3] = player -> attack_level;
+    options[4] = player -> defense_level; 
     int upgrade = options[option];
     if (upgrade < 5)
     {
