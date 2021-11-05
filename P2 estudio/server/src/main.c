@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "comunication.h"
 #include "conection.h"
+#include "players.h"
 
 char * revert(char * message){
   //Se invierte el mensaje
