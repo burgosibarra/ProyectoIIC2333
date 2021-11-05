@@ -22,6 +22,8 @@ Player* player_init(char* name, int farmers, int miners, int engineers, int warr
                     int gold, int food, int science, int farmers_level, int miners_level,
                     int engineers_level, int attack_level, int defense_level);
 
-
-// 2.5.5 Espiar
 void spy(Player* player, Player* player_spied);
+void level_up(Player* player, int option);
+void collect_resources(Player* player);
+void create_villager(Player* player, int option);
+void player_destroy(Player* player);
