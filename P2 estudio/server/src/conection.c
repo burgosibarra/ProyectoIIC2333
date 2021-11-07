@@ -17,14 +17,13 @@ PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port){
   struct sockaddr_in server_addr;
 
   // Se solicita un socket al SO, que se usará para escuchar conexiones entrantes
-  int server_socket = socket(AF_INET, SOCK_STREAM, 0);
-  //AF_INET -> IPv4 Internet protocols
+  // AF_INET -> IPv4 Internet protocols
   // SOCK_STREAM -> Provides sequenced, reliable, two-way, connection-based byte streams.  An out-of-band data transmission mechanism may be supported.
+  int server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
   // Se configura el socket a gusto (recomiendo fuertemente el REUSEPORT!)
   int opt = 1;
   int ret = setsockopt(server_socket, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
-  //SOL_SOCKET -> UDP 90% seguridad
 
   // Se guardan el puerto e IP en la estructura antes definida
   memset(&server_addr, 0, sizeof(server_addr)); //Llena con 0s tantas veces 
@@ -46,14 +45,15 @@ PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port){
   socklen_t addr_size = sizeof(client1_addr);
   
 
+  // OJO esto obliga a recibir 4 jugadores, no menos
   // Se inicializa una estructura propia para guardar los n°s de sockets de los clientes.
-  PlayersInfo * sockets_clients = malloc(sizeof(PlayersInfo));
+  Player** players = malloc(4 * sizeof(Player*));
 
   // Se aceptan a los primeros 2 clientes que lleguen. "accept" retorna el n° de otro socket asignado para la comunicación
-  sockets_clients->socket_c1 = accept(server_socket, (struct sockaddr *)&client1_addr, &addr_size);
-  sockets_clients->socket_c2 = accept(server_socket, (struct sockaddr *)&client2_addr, &addr_size);
-  sockets_clients->socket_c3 = accept(server_socket, (struct sockaddr *)&client3_addr, &addr_size);
-  sockets_clients->socket_c4 = accept(server_socket, (struct sockaddr *)&client4_addr, &addr_size);
+  players[0] = player_init(accept(server_socket, (struct sockaddr *)&client1_addr, &addr_size));
+  players[1] = player_init(accept(server_socket, (struct sockaddr *)&client2_addr, &addr_size));
+  players[2] = player_init(accept(server_socket, (struct sockaddr *)&client3_addr, &addr_size));
+  players[3] = player_init(accept(server_socket, (struct sockaddr *)&client4_addr, &addr_size));
 
-  return sockets_clients;
+  return players;
 }

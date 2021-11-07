@@ -8,12 +8,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include "comunication.h"
+#include "players.h"
 
-typedef struct players_info{
-  int socket_c1;
-  int socket_c2;
-  int socket_c3;
-  int socket_c4;
-} PlayersInfo;
 
-PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port);
+Player** prepare_sockets_and_get_clients(char * IP, int port);

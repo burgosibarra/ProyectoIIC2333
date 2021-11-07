@@ -1,14 +1,19 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
 #include "players.h"
 
 
-Player* player_init(char* name, int farmers, int miners, int engineers, int warriors,
-                    int gold, int food, int science, int farmers_level, int miners_level,
-                    int engineers_level, int attack_level, int defense_level)
+Player* player_init(int socket)
 {
     Player* player = malloc(sizeof(Player));
+    player -> socket = socket;
+    player -> ready = 0;
+    return player;
+}
+
+void set_player(Player* player, char* name, int farmers, int miners, int engineers,
+                int warriors, int gold, int food, int science, int farmers_level, 
+                int miners_level, int engineers_level, int attack_level, int defense_level)
+{
+    player -> ready = 1;
     player -> name = name;
     player -> farmers = farmers;
     player -> miners = miners;
@@ -22,12 +27,11 @@ Player* player_init(char* name, int farmers, int miners, int engineers, int warr
     player -> engineers_level = engineers_level;
     player -> attack_level = attack_level;
     player -> defense_level = defense_level;
-    return player;
 }
 
 void collect_resources(Player* player) //Se suman las cantidades de recursos necesarios
 {
-    player-> gold += player -> miners * player -> miners_level * 2;
+    player -> gold += player -> miners * player -> miners_level * 2;
     player -> food += player -> farmers * player -> farmers_level * 2;
     player -> science += player -> engineers * player -> engineers_level;
 }

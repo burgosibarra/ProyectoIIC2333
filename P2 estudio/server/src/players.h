@@ -1,7 +1,13 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
 
 struct player
 {
     char* name;
+    int socket;
+    int ready;
     int farmers;
     int miners;
     int engineers;
@@ -18,9 +24,11 @@ struct player
 
 
 typedef struct player Player;
-Player* player_init(char* name, int farmers, int miners, int engineers, int warriors,
-                    int gold, int food, int science, int farmers_level, int miners_level,
-                    int engineers_level, int attack_level, int defense_level);
+
+Player* player_init(int socket);
+void set_player(Player* player, char* name, int farmers, int miners, int engineers, int warriors,
+                int gold, int food, int science, int farmers_level, int miners_level,
+                int engineers_level, int attack_level, int defense_level);
 
 void spy(Player* player, Player* player_spied);
 void level_up(Player* player, int option);
