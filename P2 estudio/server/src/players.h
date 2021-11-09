@@ -7,7 +7,7 @@ struct player
 {
     char* name;
     int socket;
-    int ready;
+    int status;
     int farmers;
     int miners;
     int engineers;

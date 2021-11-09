@@ -4,21 +4,22 @@
 Player* player_init()
 {
     Player* player = malloc(sizeof(Player));
-    player -> ready = -1;
+    player -> status = -1;
+    player -> name = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
     return player;
 }
 
 void connect_player(Player* player, int socket)
 {
     player -> socket = socket;
-    player -> ready = 0;
+    player -> status = 0;
 }
 
 void set_player(Player* player, char* name, int farmers, int miners, int engineers,
                 int warriors, int gold, int food, int science, int farmers_level, 
                 int miners_level, int engineers_level, int attack_level, int defense_level)
 {
-    player -> ready = 1;
+    player -> status = 1;
     player -> name = name;
     player -> farmers = farmers;
     player -> miners = miners;

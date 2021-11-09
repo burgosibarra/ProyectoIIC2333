@@ -6,10 +6,11 @@ ID  |   PayloadSize |   Payload |   Descripción
 3   |   1*4           |   0 ó 1 ó 2 ó 3   | 2.5.2 Crear aldeano: pide crear aldeano de tipo 0/1/2/3
 4   |   1*4           |   0 ó 1 ó 2 ó 3 ó 4   | 2.5.3 Subir nivel: sube el nivel de 0/1/2/3/4
 5   |   1*4           |   0 ó 1 ó 2 ó 3 ó 4   | 2.5.4 Atacar: ataca a jugador 0/1/2/3/4
+
 6   |   1*4           |   0 ó 1 ó 2 ó 3 ó 4   | 2.5.5 Espiar: espía a jugador 0/1/2/3/4
 7   |   4+4           |   0 ó 1 ó 2 ó 3 ó 4 + 0 ó 1   | 2.5.6 Robar: robar a jugador 0/1/2/3/4 el recurso 0/1
 8   |   0           |   0   | 2.5.7 Pasar: pasa
-9   |   0           |   0   | 2.5.8 Rendirse: se rinde
+  9   |   0           |   0   | 2.5.8 Rendirse: se rinde
 10  |   4 + 4 + 4*4 |   0/1/2/3 + 0/1/2/3 + 0/1/2/3 + N1 + 0/1/2/3 + N2   | 4.2 Negociar: id_usuario_a_negociar + aceptar/rechazar/modificar(ofertar) + tipo_a_recibir + cantidad + tipo_a_entregar + cantidad
 
 
@@ -25,7 +26,7 @@ ID  |   PayloadSize |   Payload |   Descripción
 -------------------------------------------------------------------------------------------
 5   |   1*4           |   0 ó 1 ó 2   | 2.5.4 Atacar (para atacante): 0->Se ataco con exito 1->Se ataco y perdió 2->opcion invalida
 6   |   1*4 + len(nombre)           |   0 ó 1 NOMBRE1       | 2.5.4 Atacar (para defensor): 0->Te atacaron y perdiste 1->Te atacaron y ganaste
-7   |   2*len(nombre) + 4               |   NOMBRE1 NOMBRE2 0/1     |   2.5.4 Atacar (para todos): NOMBRE1 atacó a NOMBRE2 0->Nombre1 ganó 1->NOMBRE2 ganó
+7   |   2*len(nombre) + 4               |   0/1 NOMBRE1 NOMBRE2      |   2.5.4 Atacar (para todos): NOMBRE1 atacó a NOMBRE2 0->Nombre1 ganó 1->NOMBRE2 ganó
 -------------------------------------------------------------------------------------------
 8   |   1*4 + 3*4           |   0 ó 1 ó 2 + N1N2N3   | 2.5.4 Espiar: 0->Espiaste, se entrega info 1->No tienes recursos 2->opcion invalida
 -------------------------------------------------------------------------------------------
@@ -37,6 +38,8 @@ ID  |   PayloadSize |   Payload |   Descripción
 13  |   0   |   0   |   Has ganado
 -------------------------------------------------------------------------------------------
 14  |   4 + 4 + 4*4 |   0/1/2/3 + 0/1/2/3 + 0/1/2/3 + N1 + 0/1/2/3 + N2   | 4.2 Negociar: id_usuario_a_negociar + aceptar/rechazar/modificar(ofertar) + tipo_a_recibir + cantidad + tipo_a_entregar + cantidad
+-------------------------------------------------------------------------------------------
+15  |       0       |       |   Indica que es el turno del jugador
 
 
 
