@@ -10,5 +10,12 @@
 #include "comunication.h"
 #include "players.h"
 
+struct args
+{
+    Player** players;
+    int server_socket;
+    socklen_t* addr_pointer;
+};
 
+typedef struct args Args;
 Player** prepare_sockets_and_get_clients(char * IP, int port);

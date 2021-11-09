@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "comunication.h"
 #include "conection.h"
 #include "players.h"
@@ -12,7 +13,8 @@ int main(int argc, char *argv[]){
     int PORT = 8080;
 
     // Se crea el servidor y se obtienen los sockets de ambos clientes.
-    Player** players_info = prepare_sockets_and_get_clients(IP, PORT);
+    pthread_t threads;
+    Player** players_info = prepare_sockets_and_get_clients(IP, PORT, &threads);
 
     // Le enviamos al primer cliente un mensaje de bienvenida
     char * welcome = "Bienvenido Cliente 1!!";
@@ -61,14 +63,28 @@ int main(int argc, char *argv[]){
 
         else if (msg_code == 1)
         {
+            int count = 0;
             for (int player = 0; i < 4; i++)
             {
                 if (players_info[player]->ready == 0)
                 {
                     // Responder con que no todos están conectaods
                 }
+                if (players_info[player]->ready != -1)
+                {
+                    count++;
+                }
             }
-            // Que comience el juego
+            if (count > 1)
+            {
+                // cancelar el thread corriendo
+                // Que comience el juego
+            }
+            else
+            {
+                // Solo hay 1 jugador
+            }
+
         }
 
         else if (msg_code == 2)

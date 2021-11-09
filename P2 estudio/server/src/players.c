@@ -5,7 +5,7 @@ Player* player_init(int socket)
 {
     Player* player = malloc(sizeof(Player));
     player -> socket = socket;
-    player -> ready = 0;
+    player -> ready = -1;
     return player;
 }
 
