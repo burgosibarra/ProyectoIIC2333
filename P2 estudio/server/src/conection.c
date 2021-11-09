@@ -21,9 +21,9 @@ void* wait_connections(void * ARGS)
 
     int server_socket = arguments->server_socket;
     socklen_t* addr_pointer = arguments->addr_pointer;
-    arguments->players[1] = player_init(accept(server_socket, (struct sockaddr *)&client2_addr, addr_pointer));
-    arguments->players[2] = player_init(accept(server_socket, (struct sockaddr *)&client3_addr, addr_pointer));
-    arguments->players[3] = player_init(accept(server_socket, (struct sockaddr *)&client4_addr, addr_pointer));
+    connect_player(arguments->players[1], accept(server_socket, (struct sockaddr *)&client2_addr, addr_pointer));
+    connect_player(arguments->players[2], accept(server_socket, (struct sockaddr *)&client3_addr, addr_pointer));
+    connect_player(arguments->players[3], accept(server_socket, (struct sockaddr *)&client4_addr, addr_pointer));
 }
 
 PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port, pthread_t* threads){
@@ -59,9 +59,13 @@ PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port, pthread_t* th
     // OJO esto obliga a recibir 4 jugadores, no menos
     // Se inicializa una estructura propia para guardar los n°s de sockets de los clientes.
     Player** players = malloc(4 * sizeof(Player*));
+    players[0] = player_init();
+    players[1] = player_init();
+    players[2] = player_init();
+    players[3] = player_init();
 
     // Se aceptan a los primeros 2 clientes que lleguen. "accept" retorna el n° de otro socket asignado para la comunicación
-    players[0] = player_init(accept(server_socket, (struct sockaddr *)&client1_addr, &addr_size));
+    connect_player(players[0], accept(server_socket, (struct sockaddr *)&client1_addr, &addr_size));
     
     Args arguments;
     arguments.players = players;

@@ -1,12 +1,17 @@
 #include "players.h"
 
 
-Player* player_init(int socket)
+Player* player_init()
 {
     Player* player = malloc(sizeof(Player));
-    player -> socket = socket;
     player -> ready = -1;
     return player;
+}
+
+void connect_player(Player* player, int socket)
+{
+    player -> socket = socket;
+    player -> ready = 0;
 }
 
 void set_player(Player* player, char* name, int farmers, int miners, int engineers,
