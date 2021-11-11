@@ -11,6 +11,26 @@
 //https://www.man7.org/linux/man-pages/man2/bind.2.html
 //https://www.man7.org/linux/man-pages/man2/accept.2.html
 
+int test_and_set(Lock* lock)
+{
+    int old_value = lock->value;
+    lock->value = 1;
+
+    return old_value;
+}
+
+void acquire(Lock* lock)
+{     
+    while(test_and_set(lock))
+    {
+        sleep(2);
+    }
+}
+void release(Lock* lock) {
+  lock->value = 0;
+}
+
+
 void* wait_connections(void * ARGS)
 {
     struct args* arguments = (struct args*) ARGS;
@@ -20,13 +40,28 @@ void* wait_connections(void * ARGS)
     struct sockaddr_in client4_addr;
 
     int server_socket = arguments->server_socket;
-    socklen_t* addr_pointer = arguments->addr_pointer;
-    connect_player(arguments->players[1], accept(server_socket, (struct sockaddr *)&client2_addr, addr_pointer));
-    connect_player(arguments->players[2], accept(server_socket, (struct sockaddr *)&client3_addr, addr_pointer));
-    connect_player(arguments->players[3], accept(server_socket, (struct sockaddr *)&client4_addr, addr_pointer));
+    socklen_t addr_pointer = arguments->addr_pointer;
+    Lock* lock = arguments->lock;
+
+    int client_socket;
+
+    client_socket = accept(server_socket, (struct sockaddr *) &client2_addr, addr_pointer);
+    acquire(lock);
+    connect_player(arguments->players[1], client_socket);
+    release(lock);
+
+    client_socket = accept(server_socket, (struct sockaddr *) &client3_addr, addr_pointer);
+    acquire(lock);
+    connect_player(arguments->players[2], client_socket);
+    release(lock);
+
+    client_socket = accept(server_socket, (struct sockaddr *) &client4_addr, addr_pointer);
+    acquire(lock);
+    connect_player(arguments->players[3], client_socket);
+    release(lock);
 }
 
-PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port, pthread_t* threads){
+PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port, pthread_t* thread, Lock* lock){
     // Se define la estructura para almacenar info del socket del servidor al momento de su creación
     struct sockaddr_in server_addr;
 
@@ -70,10 +105,11 @@ PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port, pthread_t* th
     Args arguments;
     arguments.players = players;
     arguments.server_socket = server_socket;
-    arguments.addr_pointer = &addr_size;
+    arguments.addr_pointer = addr_size;
+    arguments.lock = lock;
     
     int rc;
-    rc = pthread_create(threads, NULL, wait_connections, (void *) &arguments);
+    rc = pthread_create(thread, NULL, wait_connections, (void *) &arguments);
     if (rc)
     {
         printf("ERROR; return code from pthread_create() is %d\n", rc);
