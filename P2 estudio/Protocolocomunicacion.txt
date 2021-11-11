@@ -19,7 +19,7 @@ ID  |   PayloadSize |   Payload |   Descripción
 Servidor -> Cliente
 ID  |   PayloadSize |   Payload |   Descripción
 0   |   1*4           |   0 ó 1   |   Booleano que indica si es líder o no
-1   |   1*4           |   0 ó 1   |   Estado de inicio del juego (0 no comenzó, 1 sí comenzó)
+1   |   1*4           |   0 ó 1 ó 2   |   Estado de inicio del juego (0 comenzó, 1 no comenzó porque alguien no esta listo, 2 no comenzo porque solo hay un jugador)
 2   |   12*4+len(nombre)*4 |   N1N2N3N4N5N6N7N8N9N10N11N12NOMBRE1NOMBRE2NOMBRE3NOMBRE4   |   2.5.1 Mostrar información: Cantidad de cada recurso, aldenaos y niveles
 3   |   1*4           |   0 ó 1   | 2.5.2 Crear aldeano: booleano que indica si se creó o no
 4   |   1*4           |   0 ó 1 ó 2   | 2.5.3 Subir nivel: 0->exito 1->faltan_recursos 2->ya es nivel maximo

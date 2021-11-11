@@ -13,8 +13,9 @@ int main(int argc, char *argv[]){
     int PORT = 8080;
 
     // Se crea el servidor y se obtienen los sockets de ambos clientes.
-    pthread_t threads;
-    Player** players_info = prepare_sockets_and_get_clients(IP, PORT, &threads);
+    pthread_t thread;
+    Lock lock = {0};
+    Player** players_info = prepare_sockets_and_get_clients(IP, PORT, &thread, &lock);
 
     // Le enviamos al primer cliente un mensaje de bienvenida
     //char * welcome = "Bienvenido Cliente 1!!";
@@ -65,14 +66,19 @@ int main(int argc, char *argv[]){
 
         else if (msg_code == 1)
         {
+            acquire(&lock);
             int count = 0;
             for (int player = 0; i < 4; i++)
             {
                 if (players_info[player]->status == 0)
                 {
-                    // Responder con que no todos están conectaods
+                    count++;
+                    char message[1];
+                    message[0] = 1;
+                    server_send_stdmessage(players_info, 0, 2, 1, &message);
+                    break;
                 }
-                if (players_info[player]->status != -1)
+                if (players_info[player]->status == 1)
                 {
                     count++;
                 }
@@ -81,11 +87,19 @@ int main(int argc, char *argv[]){
             {
                 // cancelar el thread corriendo
                 // Que comience el juego
+                pthread_cancel(thread);
+                char message[1];
+                message[0] = 0;
+                server_send_stdmessage(players_info, 0, 2, 1, &message);
             }
             else
             {
                 // Solo hay 1 jugador
+                char message[1];
+                message[0] = 2;
+                server_send_stdmessage(players_info, 0, 2, 1, &message);
             }
+            release(&lock);
 
         }
 
@@ -112,14 +126,9 @@ int main(int argc, char *argv[]){
         {
             int* payload = server_receive_stdpayload(players_info, my_attention);
             int return_value = level_up(players_info[my_attention], payload[0]);
-            if (return_value == 0)
-            {
-                // Informar del éxito
-            }
-            else
-            {
-                // Informar del fracaso
-            }
+            char message[1];
+            message[0] = return_value;
+            server_send_stdmessage(players_info, my_attention, 4, 1, &message);
         }
 
         else if (msg_code == 5) //Atacar

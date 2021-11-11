@@ -140,7 +140,33 @@ while (option != 7 && option != 9) {
         printf("\n¿Qué quieres subir de nivel?\n");
 				printf("1. Agricultor@s\n2. Miner@s\n3. Ingenier@s\n4. Ataque\n5. Defensa\n>> ");
         int level = getchar() - '0';
-        getchar();
+        getchar(); // OJO ¿Para que es?
+        char message[1];
+        message[0] = level;
+        client_send_message(server_socket, 4, 1, &message);
+
+        int msg_code = client_receive_id(server_socket);
+        if (msg_code != 4)
+        {
+          printf("Nunca deberíamos llegar aquí")
+        }
+        char* message = client_receive_payload(server_socket);
+        int level_up_result = (uint8_t) message[0];
+
+        if (level_up_result == 0)
+        {
+          printf("Has subido de nivel con éxito\n");
+        }
+        else if (level_up_result == 1)
+        {
+          printf("No tienes los recursos suficientes\n");
+        }
+        else if (level_up_result == 2)
+        {
+          printf("Ya eres nivel 5\n");
+        }
+        
+        free(message);
         break;
 
       case 4: // Atacar

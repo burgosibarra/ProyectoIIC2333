@@ -10,12 +10,23 @@
 #include "comunication.h"
 #include "players.h"
 
+
+struct lock
+{
+    int value = 0;
+};
+
 struct args
 {
     Player** players;
     int server_socket;
-    socklen_t* addr_pointer;
+    socklen_t addr_pointer;
+    struct lock* lock;
 };
 
 typedef struct args Args;
-Player** prepare_sockets_and_get_clients(char * IP, int port);
+typedef struct lock Lock;
+Player** prepare_sockets_and_get_clients(char * IP, int port, Lock* lock);
+int test_and_set(Lock* lock)
+void acquire(Lock* lock);
+void release(Lock* lock);

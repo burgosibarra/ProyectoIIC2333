@@ -98,7 +98,7 @@ void create_villager(Player* player, int option)// Se compra un aldeano, falta e
     }
 }
 
-void level_up(Player* player, int option)
+int level_up(Player* player, int option)
 {
     int* options[5];
     options[0] = player -> farmers_level;
@@ -146,12 +146,15 @@ void level_up(Player* player, int option)
                 player -> gold -= 10 * upgrade;
                 player -> science -= 10 * upgrade;
             }
+            return 0;
+        }
+        else 
+        {
+            //printf("No se tienen los recursos para realizar esta acción");
+            return 1;
         }
     }
-    else 
-    {
-        printf("No se tienen los recursos para realizar esta acción");
-    }
+    return 2;
 }
 
 void player_destroy(Player* player)
