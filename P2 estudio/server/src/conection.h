@@ -1,3 +1,4 @@
+#pragma once
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,13 +8,14 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <pthread.h>
 #include "comunication.h"
 #include "players.h"
 
 
 struct lock
 {
-    int value = 0;
+    int value;
 };
 
 struct args
@@ -26,7 +28,7 @@ struct args
 
 typedef struct args Args;
 typedef struct lock Lock;
-Player** prepare_sockets_and_get_clients(char * IP, int port, Lock* lock);
-int test_and_set(Lock* lock)
+Player** prepare_sockets_and_get_clients(char * IP, int port, pthread_t* thread, Lock* lock);
+int test_and_set(Lock* lock);
 void acquire(Lock* lock);
 void release(Lock* lock);

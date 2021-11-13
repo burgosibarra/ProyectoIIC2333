@@ -5,7 +5,7 @@ Player* player_init()
 {
     Player* player = malloc(sizeof(Player));
     player -> status = -1;
-    player -> name = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+    player -> name = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
     return player;
 }
 
@@ -104,7 +104,7 @@ int create_villager(Player* player, int option)// Se compra un aldeano, falta en
 
 int level_up(Player* player, int option)
 {
-    int* options[5];
+    int options[5];
     options[0] = player -> farmers_level;
     options[1] =  player -> miners_level;
     options[2] = player -> engineers_level;
@@ -189,18 +189,27 @@ int attack(Player* attacker, Player* defender)
 }
 
 // 2.5.5 Espiar
-void spy(Player* player, Player* player_spied) 
+int spy(Player* player, Player* player_spied) 
 {
+    if (player->gold<30)
+    {
+        return 1;
+    }
     player -> gold -= 30;
     printf("Spying on the player %s \n", player_spied -> name);
     printf("Number of warriors: %i \n", player_spied -> warriors);
     printf("Attack Level: %i \n", player_spied -> attack_level);
     printf("Defense Level: %i \n", player_spied -> defense_level);
+    return 0;
 }
 
 // 2.5.6 Robar
-void steal(Player* player, Player* player_robbed, int resource)
+int steal(Player* player, Player* player_robbed, int resource)
 {
+    if (player->science<10)
+    {
+        return 1;
+    }
     player->science = player->science - 10;
     if (resource == 0)
     {
@@ -212,4 +221,10 @@ void steal(Player* player, Player* player_robbed, int resource)
         player->gold = player_robbed->gold*0.1;
         player_robbed->gold = player_robbed->gold*0.9;
     }
+    else
+    {
+        return 1;
+    }
+    
+    return 0;
 }

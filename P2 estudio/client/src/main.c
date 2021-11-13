@@ -77,6 +77,7 @@ void flujo(int server_socket) {
         break;
     }
 
+    printf("eleccion %s",villagers[i]);
     if (villagers[i] == -1) 
     {
       villagers[i] = 0;
@@ -112,13 +113,36 @@ printf("| Aldean@s restantes | %i | \n|   Agricultor@s     | %i |\n|   Miner@s  
 printf("|____________________|___| \n\n");
 
 // printf("¿Qué deseas hacer %s?\n1. Mostrar información \n2. Crear Aldeano\n3. Subir de nivel\n4. Atacar\n5. Espiar\n6. Robar\n7. Pasar\n8. Negociar\n9. Rendirse\n>> ", name);
-int option = 0 // getchar() - '0';
+int option = 0; // getchar() - '0';
 // getchar(); 
 
 while (option != 7 && option != 9) {
-  //manejar usuaroios
+  
+  int msg_server = client_receive_id(server_socket);
 
   // while ()
+  if (msg_server == 10)
+  {
+    char* msg_10 = client_receive_payload(server_socket);
+    int resource = msg_10[0];
+    int amount = (int) msg_10[1];
+    if (resource == 0)
+    {
+      printf("The han robado %i de comida", amount);
+    }else
+    {
+
+      printf("The han robado %i de oro", amount);
+    }
+  }
+  if (msg_server == 11)
+  {
+    char* msg_11 = client_receive_payload(server_socket);
+    printf("%s fue robado\n", msg_11);
+  }
+
+  if (msg_server == 15)
+  {
 
   printf("¿Qué deseas hacer %s?\n1. Mostrar información \n2. Crear Aldeano\n3. Subir de nivel\n4. Atacar\n5. Espiar\n6. Robar\n7. Pasar\n8. Negociar\n9. Rendirse\n>> ", name);
   int option = getchar() - '0';
@@ -128,8 +152,8 @@ while (option != 7 && option != 9) {
     {
       case 1: // Mostrar información
         printf("\nInformación de %s\n ", name);
-        client_send_message(server_socket, 2, 0, (char) * NULL);
-        char* message = client_recieve_payload(server_socket);
+        client_send_message(server_socket, 2, 0, (char*) NULL);
+        char* message = client_receive_payload(server_socket);
         printf("Tienes estos aldeanos en cada rol:\n");
         printf("Granjeros: %i\n", message[0]);
         printf("Mineros: %i\n", message[1]);
@@ -152,16 +176,16 @@ while (option != 7 && option != 9) {
 				printf("\n¿Qué aldeano quieres?\n1. Agricultor/a\n2. Minero/a\n3. Ingeniero/a\n4. Guerrero/a\n>> ");
         int villager = getchar() - '0';
         getchar();
-        char message[1];
-        message[0] = villager;
-        client_send_message(server_socket, 3, 1, &message);
+        char message2_1[1];
+        message2_1[0] = villager;
+        client_send_message(server_socket, 3, 1, &message2_1[0]);
         int msg_code = client_receive_id(server_socket);
         if (msg_code != 3)
         {
-          printf("Nunca deberíamos llegar aquí")
+          printf("Nunca deberíamos llegar aquí");
         }
-        char* message = client_receive_payload(server_socket);
-        int create_villager_result = (uint8_t) message[0];
+        char* message2_2 = client_receive_payload(server_socket);
+        int create_villager_result = (uint8_t) message2_2[0];
 
         if (create_villager_result == 0)
         {
@@ -171,25 +195,25 @@ while (option != 7 && option != 9) {
         {
           printf("No tienes los recursos suficientes\n");
         }
-        free(message);
+        free(message2_2);
         break;
         
       case 3: // Subir de nivel
         printf("\n¿Qué quieres subir de nivel?\n");
 				printf("1. Agricultor@s\n2. Miner@s\n3. Ingenier@s\n4. Ataque\n5. Defensa\n>> ");
         int level = getchar() - '0';
-        getchar(); // OJO ¿Para que es?
-        char message[1];
-        message[0] = level;
-        client_send_message(server_socket, 4, 1, &message);
+        getchar();
+        char message3_1[1];
+        message3_1[0] = level;
+        client_send_message(server_socket, 4, 1, &message3_1[0]);
 
-        int msg_code = client_receive_id(server_socket);
-        if (msg_code != 4)
+        int msg_code2 = client_receive_id(server_socket);
+        if (msg_code2 != 4)
         {
-          printf("Nunca deberíamos llegar aquí")
+          printf("Nunca deberíamos llegar aquí");
         }
-        char* message = client_receive_payload(server_socket);
-        int level_up_result = (uint8_t) message[0];
+        char* message3_2 = client_receive_payload(server_socket);
+        int level_up_result = (uint8_t) message3_2[0];
 
         if (level_up_result == 0)
         {
@@ -203,45 +227,44 @@ while (option != 7 && option != 9) {
         {
           printf("Ya eres nivel 5\n");
         }
-        
-        free(message);
+        free(message3_2);
         break;
 
       case 4: // Atacar
         client_send_message(server_socket, 5, 0, (char*) NULL);
-        int msg_code = client_receive_id(server_socket);
-        if (msg_code != 0)
+        int msg_code4_1 = client_receive_id(server_socket);
+        if (msg_code4_1 != 0)
         {
-          printf("Nunca deberíamos llegar aquí")
+          printf("Nunca deberíamos llegar aquí");
         }
        
-        char* message = client_receive_payload(server_socket);
+        char* message4_1 = client_receive_payload(server_socket);
 
         char name[50];
-        for (i = 0; i <= 3; i++)
+        for (int i = 0; i <= 3; i++)
         {
-          for (j = 0; j < 50; j++)
+          for (int j = 0; j < 50; j++)
           { 
-            name[j] = message[12 + (50 * i) + j];
+            name[j] = message4_1[12 + (50 * i) + j];
           }
           printf("[%i] %s \n", i + 1, name);
         }
-        free(message);
+        free(message4_1);
 
         printf("\n¿A quién quieres atacar? \n>> ");
         int attack = getchar() - '0';
         getchar();
         attack = (char) attack;
-        client_send_message(server_socket, 5, 1, (char*) &attack)
+        client_send_message(server_socket, 5, 1, (char*) &attack);
 
-        int msg_code = client_receive_id(server_socket);
-        if (msg_code != 5)
+        int msg_code4_2 = client_receive_id(server_socket);
+        if (msg_code4_2 != 5)
         {
-          printf("Nunca deberíamos llegar aquí")
+          printf("Nunca deberíamos llegar aquí");
         }
-        char* message = client_receive_payload(server_socket);
+        char* message4_2 = client_receive_payload(server_socket);
 
-        int attack_result = (uint8_t) message[0];
+        int attack_result = (uint8_t) message4_2[0];
         
         if (attack_result == 0)
         {
@@ -255,10 +278,7 @@ while (option != 7 && option != 9) {
         {
           printf("Diste una opción inválida:c\n");
         }
-
-        free(message);
-        
-
+        free(message4_2);
         break;
 
 			case 5: // Espiar
@@ -268,10 +288,40 @@ while (option != 7 && option != 9) {
         break;
 
 			case 6: // Robar
-        printf("\n¿A quién le quieres robar? \n>> ");
-        int robar = getchar() - '0';
-        getchar();
-        break;
+          printf("\n¿A quién le quieres robar? \n>> ");
+          int robar = getchar() - '0';
+          getchar();
+          printf("\n¿Qué quieres robar? \n");
+          printf("\n1) gold");
+          printf("\n2) food");
+          int resource = getchar() - '0';
+          getchar();
+          resource--;
+          char steal_message[2];
+          steal_message[0] = robar;
+          steal_message[1] = resource;
+          client_send_message(server_socket, 7, 2, &steal_message[0]);
+
+          int steal_pkg_id = client_receive_id(server_socket);
+          if (steal_pkg_id != 9)
+          {
+            printf("Nunca deberíamos llegar aquí");
+          }
+
+          char* message6 = client_receive_payload(server_socket);
+          int steal_pkg_msg = (int) message6[0];
+          if (steal_pkg_msg==0)
+          {
+            printf("Robo realizado\n");
+          }else if (steal_pkg_msg==1)
+          {
+            printf("No tienes suficientes recursos\n");
+          }else
+          {
+            printf("Opción Válida\n");
+          }
+          free(message6);
+          break;
 			
 			case 7: // Pasar
         printf("\n¿Cuántos guerreros quieres? \n>> ");
@@ -289,6 +339,10 @@ while (option != 7 && option != 9) {
         // Enviar aviso al servidor de que se rindió el juego.
         break;
     }
+
+  }
+
+  
 
 	// printf("\n¿Qué deseas hacer %s?\n1. Mostrar información \n2. Crear Aldeano\n3. Subir de nivel\n4. Atacar\n5. Espiar\n6. Robar\n7. Pasar\n8. Negociar\n9. Rendirse\n>> ", name);
 	// option = getchar() - '0';

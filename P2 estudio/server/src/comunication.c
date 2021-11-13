@@ -22,7 +22,7 @@ char* server_receive_stdpayload(Player** players_array, int player)
 
     // Se obtiene el largo del payload
     int len = 0;
-    recv(client_socket, &len, 1, 0);
+    recv(socket, &len, 1, 0);
     len = (uint8_t) len;
 
     // Se obtiene el payload
@@ -32,7 +32,7 @@ char* server_receive_stdpayload(Player** players_array, int player)
     return payload;
 }
 
-void server_receive_setting(Player** players_array, int player)
+int server_receive_setting(Player** players_array, int player)
 {
 
     int socket = players_array[player]->socket;
@@ -78,7 +78,8 @@ void server_receive_setting(Player** players_array, int player)
 }
 
 
-void server_send_message(Player** players_array, int player, int pkg_id, int size, char* message);
+void server_send_stdmessage(Player** players_array, int player, int pkg_id, int size, char* message)
+{
   
     int payloadSize = (size + 1);
 

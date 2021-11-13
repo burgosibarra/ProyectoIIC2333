@@ -15,7 +15,6 @@ int test_and_set(Lock* lock)
 {
     int old_value = lock->value;
     lock->value = 1;
-
     return old_value;
 }
 
@@ -45,23 +44,23 @@ void* wait_connections(void * ARGS)
 
     int client_socket;
 
-    client_socket = accept(server_socket, (struct sockaddr *) &client2_addr, addr_pointer);
+    client_socket = accept(server_socket, (struct sockaddr *) &client2_addr, &addr_pointer);
     acquire(lock);
     connect_player(arguments->players[1], client_socket);
     release(lock);
 
-    client_socket = accept(server_socket, (struct sockaddr *) &client3_addr, addr_pointer);
+    client_socket = accept(server_socket, (struct sockaddr *) &client3_addr, &addr_pointer);
     acquire(lock);
     connect_player(arguments->players[2], client_socket);
     release(lock);
 
-    client_socket = accept(server_socket, (struct sockaddr *) &client4_addr, addr_pointer);
+    client_socket = accept(server_socket, (struct sockaddr *) &client4_addr, &addr_pointer);
     acquire(lock);
     connect_player(arguments->players[3], client_socket);
     release(lock);
 }
 
-PlayersInfo * prepare_sockets_and_get_clients(char * IP, int port, pthread_t* thread, Lock* lock){
+    Player** prepare_sockets_and_get_clients(char * IP, int port, pthread_t* thread, Lock* lock){
     // Se define la estructura para almacenar info del socket del servidor al momento de su creación
     struct sockaddr_in server_addr;
 
