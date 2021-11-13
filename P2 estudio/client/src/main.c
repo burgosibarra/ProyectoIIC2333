@@ -128,12 +128,50 @@ while (option != 7 && option != 9) {
     {
       case 1: // Mostrar información
         printf("\nInformación de %s\n ", name);
+        client_send_message(server_socket, 2, 0, (char) * NULL);
+        char* message = client_recieve_payload(server_socket);
+        printf("Tienes estos aldeanos en cada rol:\n");
+        printf("Granjeros: %i\n", message[0]);
+        printf("Mineros: %i\n", message[1]);
+        printf("Ingenieros: %i\n", message[2]);
+        printf("Guerreros: %i\n", message[3]);
+        printf("Tienes estos recursos:\n");
+        printf("Oro: %i", message[4]);
+        printf("Comida: %i", message[5]);
+        printf("Ciencia: %i", message[6]);
+        printf("Estos son los niveles de tus unidades: ");
+        printf("Granjeros: %i\n", message[7]);
+        printf("Mineros: %i\n", message[8]);
+        printf("Ingenieros: %i\n", message[9]);
+        printf("Ataque: %i\n", message[10]);
+        printf("Defensa: %i\n", message[11]);
+        free(message);
         break;
         
       case 2: // Crear Aldeano
 				printf("\n¿Qué aldeano quieres?\n1. Agricultor/a\n2. Minero/a\n3. Ingeniero/a\n4. Guerrero/a\n>> ");
         int villager = getchar() - '0';
         getchar();
+        char message[1];
+        message[0] = villager;
+        client_send_message(server_socket, 3, 1, &message);
+        int msg_code = client_receive_id(server_socket);
+        if (msg_code != 3)
+        {
+          printf("Nunca deberíamos llegar aquí")
+        }
+        char* message = client_receive_payload(server_socket);
+        int create_villager_result = (uint8_t) message[0];
+
+        if (create_villager_result == 0)
+        {
+          printf("Has creado un aldeano\n");
+        }
+        else if (create_villager_result == 1)
+        {
+          printf("No tienes los recursos suficientes\n");
+        }
+        free(message);
         break;
         
       case 3: // Subir de nivel

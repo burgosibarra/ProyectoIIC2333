@@ -75,7 +75,6 @@ void server_receive_setting(Player** players_array, int player)
         return 2;
     }
 
-
 }
 
 

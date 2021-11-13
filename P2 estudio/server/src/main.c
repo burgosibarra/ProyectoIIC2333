@@ -105,6 +105,20 @@ int main(int argc, char *argv[]){
 
         else if (msg_code == 2)
         {
+            char* message = malloc((12 + 4 * 50));
+            message[0] = players_info[my_attention] -> farmers;
+            message[1] = players_info[my_attention] -> miners;
+            message[2] = players_info[my_attention] -> engineers;
+            message[3] = players_info[my_attention] -> warriors;
+            message[4] = players_info[my_attention] -> gold;
+            message[5] = players_info[my_attention] -> food;
+            message[6] = players_info[my_attention] -> science;
+            message[7] = players_info[my_attention] -> farmers_level;
+            message[8] = players_info[my_attention] -> miners_level;
+            message[9] = players_info[my_attention] -> engineers_level;
+            message[10] = players_info[my_attention] -> attack_level;
+            message[11] = players_info[my_attention] -> defense_level;
+            server_send_stdmessage(players_info, my_attention, 3 ,1 , &message);
             // Enviar información al jugador
         }
 
@@ -112,14 +126,10 @@ int main(int argc, char *argv[]){
         {
             int* payload = server_receive_stdpayload(players_info, my_attention);
             int return_value = create_villager(players_info[my_attention], payload[0]);
-            if (return_value == 0)
-            {
-                // Informar del éxito
-            }
-            else
-            {
-                // Informar del fracaso
-            }
+            char message[1];
+            message[0] = return_value;
+            server_send_stdmessage(players_info, my_attention, 3, 1, &message);
+            free(message);
         }
 
         else if (msg_code == 4)

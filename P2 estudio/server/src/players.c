@@ -42,7 +42,7 @@ void collect_resources(Player* player) //Se suman las cantidades de recursos nec
     player -> science += player -> engineers * player -> engineers_level;
 }
 
-void create_villager(Player* player, int option)// Se compra un aldeano, falta enviar mensajes de q no se pueden hacer las cosas
+int create_villager(Player* player, int option)// Se compra un aldeano, falta enviar mensajes de q no se pueden hacer las cosas
 {
     if (option == 1) //Se crea un agricultor
     {
@@ -50,10 +50,11 @@ void create_villager(Player* player, int option)// Se compra un aldeano, falta e
         {
             player -> food -= 10; // Se descuenta recurso actual
             player -> farmers +=1; //Se añade un agricultor
+            return 0;
         }
         else
         {
-            printf("No tienes comida suficiente para crear un agricultor");
+            return 1;
         }
     }
     else if (option == 2) //Se crea minero
@@ -63,10 +64,11 @@ void create_villager(Player* player, int option)// Se compra un aldeano, falta e
             player -> food -= 10;
             player -> gold -= 5;
             player -> miners += 1;
+            return 0;
         }
         else 
         {
-            printf("No tienes recursos suficientes para crear un minero");
+            return 1;
         }
 
     }
@@ -77,10 +79,11 @@ void create_villager(Player* player, int option)// Se compra un aldeano, falta e
             player -> food -= 20;
             player -> gold -= 10;
             player -> engineers +=1;
+            return 0;
         }
         else 
         {
-            printf("No tienes recursos suficientes para crear un ingeniero");
+            return 1;
         }
     }
     else if (option == 4) //Se crea guerrero
@@ -90,10 +93,11 @@ void create_villager(Player* player, int option)// Se compra un aldeano, falta e
             player -> food -= 10;
             player -> gold -= 10;
             player -> warriors +=1;
+            return 0;
         }
         else 
         {
-            printf("No tienes recursos suficientes para crear un guerrero");
+            return 1;
         }
     }
 }
