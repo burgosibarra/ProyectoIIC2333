@@ -30,6 +30,44 @@ void release(Lock* lock) {
 }
 
 
+void client_setting(Player** players, int player, Lock* lock)
+{
+    int msg_code = server_receive_instruction(players[player]->socket);
+    if (msg_code != 0)
+    {
+        printf("SERVER/CONECTION.c38: Nunca deberíamos llegar aquí \n");
+    }
+    char* payload = server_receive_stdpayload(players, player);
+    char* name = malloc(50);
+    int farmers = (int) payload[0];
+    int miners = (int) payload[1];
+    int engineers = (int) payload[2];
+    int warriors = (int) payload[3];
+    for (int i = 0; i < 50; i++)
+    {
+        name[i] = payload[4 + i];
+    }
+    if (lock == NULL)
+    {
+        set_player(players[player], name, farmers, miners, engineers,
+                warriors, 0, 0, 0, 1, 
+                1, 1, 1, 1);
+        free(name);
+        free(payload);
+    }
+    else
+    {
+        acquire(lock);
+        set_player(players[player], name, farmers, miners, engineers,
+                warriors, 0, 0, 0, 1, 
+                1, 1, 1, 1);
+        free(name);
+        free(payload);
+        release(lock);
+    }
+}
+
+
 void* wait_connections(void * ARGS)
 {
     struct args* arguments = (struct args*) ARGS;
@@ -38,29 +76,46 @@ void* wait_connections(void * ARGS)
     struct sockaddr_in client3_addr;
     struct sockaddr_in client4_addr;
 
+    Player** array = arguments->players;
     int server_socket = arguments->server_socket;
-    socklen_t addr_pointer = arguments->addr_pointer;
+    socklen_t* addr_pointer = arguments->addr_pointer;
     Lock* lock = arguments->lock;
 
     int client_socket;
 
-    client_socket = accept(server_socket, (struct sockaddr *) &client2_addr, &addr_pointer);
+    client_socket = accept(server_socket, (struct sockaddr *) &client2_addr, addr_pointer);
+    while (client_socket == -1)
+    {
+        client_socket = accept(server_socket, (struct sockaddr *) &client2_addr, addr_pointer);
+    }
     acquire(lock);
-    connect_player(arguments->players[1], client_socket);
+    connect_player(array[1], client_socket);
     release(lock);
+    client_setting(array, 1, lock);
 
-    client_socket = accept(server_socket, (struct sockaddr *) &client3_addr, &addr_pointer);
+    client_socket = accept(server_socket, (struct sockaddr *) &client3_addr, addr_pointer);
+    while (client_socket == -1)
+    {
+        client_socket = accept(server_socket, (struct sockaddr *) &client3_addr, addr_pointer);
+    }
     acquire(lock);
-    connect_player(arguments->players[2], client_socket);
+    connect_player(array[2], client_socket);
     release(lock);
+    client_setting(array, 2, lock);
 
-    client_socket = accept(server_socket, (struct sockaddr *) &client4_addr, &addr_pointer);
+    client_socket = accept(server_socket, (struct sockaddr *) &client4_addr, addr_pointer);
+    while (client_socket == -1)
+    {
+        client_socket = accept(server_socket, (struct sockaddr *) &client4_addr, addr_pointer);
+    }
     acquire(lock);
-    connect_player(arguments->players[3], client_socket);
+    connect_player(array[3], client_socket);
     release(lock);
+    client_setting(array, 3, lock);
 }
 
-    Player** prepare_sockets_and_get_clients(char * IP, int port, pthread_t* thread, Lock* lock){
+
+Player** prepare_sockets_and_get_clients(char * IP, int port, socklen_t* addr_size, pthread_t* thread, Lock* lock, Args* arguments){
     // Se define la estructura para almacenar info del socket del servidor al momento de su creación
     struct sockaddr_in server_addr;
 
@@ -87,7 +142,7 @@ void* wait_connections(void * ARGS)
 
     // Se definen las estructuras para almacenar info sobre los sockets de los clientes
     struct sockaddr_in client1_addr;
-    socklen_t addr_size = sizeof(client1_addr);
+    *addr_size = sizeof(client1_addr);
 
 
     // OJO esto obliga a recibir 4 jugadores, no menos
@@ -99,22 +154,26 @@ void* wait_connections(void * ARGS)
     players[3] = player_init();
 
     // Se aceptan a los primeros 2 clientes que lleguen. "accept" retorna el n° de otro socket asignado para la comunicación
-    connect_player(players[0], accept(server_socket, (struct sockaddr *)&client1_addr, &addr_size));
+    int aux_socket = accept(server_socket, (struct sockaddr *)&client1_addr, addr_size);
+    while (aux_socket == -1)
+    {
+        aux_socket = accept(server_socket, (struct sockaddr *)&client1_addr, addr_size);
+    }
+    connect_player(players[0], aux_socket);
+    client_setting(players, 0, NULL);
     
-    Args arguments;
-    arguments.players = players;
-    arguments.server_socket = server_socket;
-    arguments.addr_pointer = addr_size;
-    arguments.lock = lock;
+    arguments->players = players;
+    arguments->server_socket = server_socket;
+    arguments->addr_pointer = addr_size;
+    arguments->lock = lock;
     
     int rc;
-    rc = pthread_create(thread, NULL, wait_connections, (void *) &arguments);
+    rc = pthread_create(thread, NULL, wait_connections, (void *) arguments);
     if (rc)
     {
         printf("ERROR; return code from pthread_create() is %d\n", rc);
         exit(-1);
     }
-
 
     return players;
 }

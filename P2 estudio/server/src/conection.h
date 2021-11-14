@@ -22,13 +22,13 @@ struct args
 {
     Player** players;
     int server_socket;
-    socklen_t addr_pointer;
+    socklen_t* addr_pointer;
     struct lock* lock;
 };
 
 typedef struct args Args;
 typedef struct lock Lock;
-Player** prepare_sockets_and_get_clients(char * IP, int port, pthread_t* thread, Lock* lock);
+Player** prepare_sockets_and_get_clients(char * IP, int port, socklen_t* addr_size, pthread_t* thread, Lock* lock, Args* arguments);
 int test_and_set(Lock* lock);
 void acquire(Lock* lock);
 void release(Lock* lock);

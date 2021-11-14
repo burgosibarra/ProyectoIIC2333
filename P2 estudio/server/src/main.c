@@ -7,6 +7,40 @@
 #include "players.h"
 
 
+void next_player(Player** players, int* attention)
+{
+    int next = (*attention + 1) % 4;
+    while (players[next]->status == -1)
+    {
+        next = (next + 1) % 4;
+    }
+    *attention = next;
+}
+
+int check_winner(Player** players_info)
+{
+    int count = 0;
+    int winner;
+    for (int i = 0; i < 4; i++)
+    {
+        if (players_info[i]->status == 1)
+        {
+            winner = i;
+            count++;
+        }
+    }
+    if (count == 1)
+    {
+        server_send_stdmessage(players_info, winner, 13, 0, (void*) NULL);
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+
 int main(int argc, char *argv[]){
     // Se define una IP y un puerto
     char * IP = "0.0.0.0";
@@ -14,8 +48,11 @@ int main(int argc, char *argv[]){
 
     // Se crea el servidor y se obtienen los sockets de ambos clientes.
     pthread_t thread;
-    Lock lock = {0};
-    Player** players_info = prepare_sockets_and_get_clients(IP, PORT, &thread, &lock);
+    Lock* lock = malloc(sizeof(lock));
+    lock->value = 0;
+    socklen_t* addr_size = malloc(sizeof(socklen_t));
+    Args* arguments = malloc(sizeof(Args));
+    Player** players_info = prepare_sockets_and_get_clients(IP, PORT, addr_size, &thread, lock, arguments);
 
     // Le enviamos al primer cliente un mensaje de bienvenida
     //char * welcome = "Bienvenido Cliente 1!!";
@@ -24,51 +61,21 @@ int main(int argc, char *argv[]){
     array[0] = 1;
     server_send_stdmessage(players_info, 0, 0, 1, &array[0]);
 
-    int my_attention = 0;
-    while (1)
+    int started = 0;
+    int leader_socket;
+    int leader_msg_code;
+    char* client_payload;
+
+    while (started == 0)
     {
-        int socket = players_info[my_attention]->socket;
-        server_send_stdmessage(players_info, my_attention, 15, 0, (char*) NULL);
-        // Se obtiene el paquete del cliente my_attention
-        int msg_code = server_receive_instruction(socket);
-
-        if (players_info[my_attention]->status == 0 && msg_code != 0)
+        leader_socket = players_info[0]->socket;
+        leader_msg_code = server_receive_instruction(leader_socket);
+        client_payload = server_receive_stdpayload(players_info, 0);
+        if (leader_msg_code == 1)
         {
-            // Nunca deberíamos llegar aquí
-            // ERROR: no se puede enviar una instrucción que no sea de inicializacion
-        }
-
-        if (my_attention != 0 && msg_code == 1)
-        {
-            // Nunca deberíamos llegar aquí
-            // ERROR: no se puede iniciar el juego sin ser el líder
-        }
-
-        if (msg_code == 0)
-        {
-            // Recepción
-            int return_value = server_receive_setting(players_info, my_attention);
-
-            if (return_value == 0)
-            {
-                // Enviamos una respuesta
-                //server_send_message(sockets_array[my_attention], 1, response);
-
-                // Avanzamos al siguiente cliente
-                my_attention = (my_attention + 1) % 4;
-            }
-            else 
-            {
-                // Enviamos una respuesta, pedimos nuevamente la información
-                //server_send_message(sockets_array[my_attention], 1, response);
-            }
-
-        }
-
-        else if (msg_code == 1)
-        {
-            acquire(&lock);
+            acquire(lock);
             int count = 0;
+            int everyone_is_ready = 1;
             for (int player = 0; player < 4; player++)
             {
                 if (players_info[player]->status == 0)
@@ -76,7 +83,8 @@ int main(int argc, char *argv[]){
                     count++;
                     char message[1];
                     message[0] = 1;
-                    server_send_stdmessage(players_info, 0, 2, 1, &message[0]);
+                    server_send_stdmessage(players_info, 0, 1, 1, &message[0]);
+                    everyone_is_ready = 0;
                     break;
                 }
                 if (players_info[player]->status == 1)
@@ -84,24 +92,62 @@ int main(int argc, char *argv[]){
                     count++;
                 }
             }
-            if (count > 1)
+            if (count > 1 && everyone_is_ready)
             {
                 // cancelar el thread corriendo
                 // Que comience el juego
                 pthread_cancel(thread);
                 char message[1];
                 message[0] = 0;
-                server_send_stdmessage(players_info, 0, 2, 1, &message[0]);
+                server_send_stdmessage(players_info, 0, 1, 1, &message[0]);
+                started = 1;
             }
-            else
+            else if (everyone_is_ready)
             {
                 // Solo hay 1 jugador
                 char message[1];
                 message[0] = 2;
-                server_send_stdmessage(players_info, 0, 2, 1, &message[0]);
+                server_send_stdmessage(players_info, 0, 1, 1, &message[0]);
             }
-            release(&lock);
+            release(lock);
 
+        }
+        else
+        {
+            printf("91: Nunca deberíamos llegar aquí \n");
+        }
+        free(client_payload);
+    }
+
+    int my_attention = 0;
+    int msg_code;
+
+    collect_resources(players_info[0]);
+    while (1)
+    {
+        int socket = players_info[my_attention]->socket;
+        server_send_stdmessage(players_info, my_attention, 15, 0, (char*) NULL);
+        // Se obtiene el paquete del cliente my_attention
+        msg_code = server_receive_instruction(socket);
+        client_payload = server_receive_stdpayload(players_info, my_attention);
+
+
+        if (players_info[my_attention]->status == 0 && msg_code != 0)
+        {
+            // Nunca deberíamos llegar aquí
+            // ERROR: no se puede enviar una instrucción si el jugador no está iniciado
+            printf("SERVER/MAIN109: Nunca deberíamos llegar aquí, msg_code %i \n", msg_code);
+        }
+
+        if (msg_code == 1)
+        {
+            // Nunca deberíamos llegar aquí
+            printf("SERVER/MAIN115: Nunca deberíamos llegar aquí, msg_code %i \n", msg_code);
+        }
+
+        if (msg_code == 0)
+        {
+            printf("SERVER/MAIN120: Nunca deberíamos llegar aquí, msg_code %i \n", msg_code);
         }
 
         else if (msg_code == 2)
@@ -119,22 +165,38 @@ int main(int argc, char *argv[]){
             message[9] = players_info[my_attention] -> engineers_level;
             message[10] = players_info[my_attention] -> attack_level;
             message[11] = players_info[my_attention] -> defense_level;
-            server_send_stdmessage(players_info, my_attention, 3 ,1 , &message[0]);
-            // Enviar información al jugador
+            for (int i = 0; i < 4; i++)
+            {
+                if (players_info[i] -> status == 1)
+                {
+                    for (int j = 0; j < 50; j++)
+                    {
+                        message[12 + 50 * i + j] = players_info[i]->name[j];
+                    }
+                }
+                else
+                {
+                    for (int j = 0; j < 50; j++)
+                    {
+                        message[12 + 50 * i + j] = '\0';
+                    }
+                }
+            }
+            server_send_stdmessage(players_info, my_attention, 2, 12 + 4 * 50, &message[0]);
+            free(client_payload);
+            free(message);
         }
 
         else if (msg_code == 3)
         {
-            char* payload = server_receive_stdpayload(players_info, my_attention);
-            int return_value = create_villager(players_info[my_attention], (int) payload[0]);
+            int return_value = create_villager(players_info[my_attention], (int) client_payload[0]);
             char message3[1];
             message3[0] = return_value;
             server_send_stdmessage(players_info, my_attention, 3, 1, &message3[0]);
         }
         else if (msg_code == 4)
         {
-            char* payload = server_receive_stdpayload(players_info, my_attention);
-            int return_value = level_up(players_info[my_attention], (int) payload[0]);
+            int return_value = level_up(players_info[my_attention], (int) client_payload[0]);
             char message4[1];
             message4[0] = return_value;
             server_send_stdmessage(players_info, my_attention, 4, 1, &message4[0]);
@@ -142,6 +204,7 @@ int main(int argc, char *argv[]){
 
         else if (msg_code == 5) //Atacar
         {
+            free(client_payload);
             char* message5 = malloc((12 + 4 * 50));
             message5[0] = players_info[my_attention] -> farmers;
             message5[1] = players_info[my_attention] -> miners;
@@ -164,19 +227,28 @@ int main(int argc, char *argv[]){
                         message5[12 + 50 * i + j] = players_info[i]->name[j];
                     }
                 }
+                else
+                {
+                    for (int j = 0; j < 50; j++)
+                    {
+                        message5[12 + 50 * i + j] = '\0';
+                    }
+                }
             }
             server_send_stdmessage(players_info, my_attention, 2, 12 + 4 * 50, message5);
             free(message5);
 
-            int msg_code = server_receive_instruction(socket);
+            msg_code = server_receive_instruction(socket);
             if (msg_code != 5)
             {
-                printf("Nunca deberiamos llegar aquí");
+                printf("SERVER/MAIN190: Nunca deberiamos llegar aquí");
             }
-            char* payload = server_receive_stdpayload(players_info, my_attention);
+            client_payload = server_receive_stdpayload(players_info, my_attention);
             
-            int defender = ((uint8_t) payload[0]) - 1;
+            int defender = ((uint8_t) client_payload[0]) - 1;
+            free(client_payload);
             int return_value;
+            // Modificar: puede no haber 4 jugadores
             if (my_attention == defender || defender >= 4 || defender < 0)
             {
                 return_value = 2;
@@ -210,23 +282,47 @@ int main(int argc, char *argv[]){
 
                 for (int i = 0; i < 4; i++)
                 {
-                    if (players_info[i] -> status == 1)
+                    if (players_info[i] -> socket != -1)
                     {
                         server_send_stdmessage(players_info, i, 7, 1 + 2 * 50, message5_4);
                     }
                 }
                 free(message5_4);
 
-            }
+                if (return_value == 1)
+                {
+                    players_info[defender]->status = -1;
+                }
 
-            free(payload);
+                
+                if(check_winner(players_info))
+                {
+                    char* message5_5 = malloc(51);
+                    message5_5[0] = 2;
+                    for (int i = 0; i < 50; i++)
+                    {
+                        message5_5[1 + i] = players_info[my_attention]->name[i];
+                    }
+
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (players_info[i] -> socket != -1)
+                        {
+                            server_send_stdmessage(players_info, i, 12, 1 + 50, message5_5);
+                        }
+                    }
+
+                    free(message5_5);
+                    break;
+                }
+
+            }
 
         }
 
         else if (msg_code == 6)
         {
-            char* payload = server_receive_stdpayload(players_info, my_attention);
-            int return_value = spy(players_info[my_attention], players_info[(int) payload[0]]);
+            int return_value = spy(players_info[my_attention], players_info[(int) client_payload[0]]);
             if (return_value == 0)
             {
                 // Informar del éxito
@@ -235,21 +331,68 @@ int main(int argc, char *argv[]){
             {
                 // Informar del fracaso
             }
+            free(client_payload);
         }
 
         else if (msg_code == 7)
         {
-            char* payload = server_receive_stdpayload(players_info, my_attention);
-            char return_value = (char) steal(players_info[my_attention], players_info[(int) payload[0]], (int) payload[1]);
-            server_send_stdmessage(players_info, my_attention, 9, 2, &return_value);
 
-            if (return_value == 0)
+            free(client_payload);
+            char* message7 = malloc((12 + 4 * 50));
+            message7[0] = players_info[my_attention] -> farmers;
+            message7[1] = players_info[my_attention] -> miners;
+            message7[2] = players_info[my_attention] -> engineers;
+            message7[3] = players_info[my_attention] -> warriors;
+            message7[4] = players_info[my_attention] -> gold;
+            message7[5] = players_info[my_attention] -> food;
+            message7[6] = players_info[my_attention] -> science;
+            message7[7] = players_info[my_attention] -> farmers_level;
+            message7[8] = players_info[my_attention] -> miners_level;
+            message7[9] = players_info[my_attention] -> engineers_level;
+            message7[10] = players_info[my_attention] -> attack_level;
+            message7[11] = players_info[my_attention] -> defense_level;
+            for (int i = 0; i < 4; i++)
             {
-                char* message_players = malloc(50); // nombre más un 1 o 0               
-                message_players = players_info[(int) payload[0]]->name;
+                if (players_info[i] -> status == 1)
+                {
+                    for (int j = 0; j < 50; j++)
+                    {
+                        message7[12 + 50 * i + j] = players_info[i]->name[j];
+                    }
+                }
+                else
+                {
+                    for (int j = 0; j < 50; j++)
+                    {
+                        message7[12 + 50 * i + j] = '\0';
+                    }
+                }
+            }
+            server_send_stdmessage(players_info, my_attention, 2, 12 + 4 * 50, message7);
+            free(message7);
+
+            msg_code = server_receive_instruction(socket);
+            if (msg_code != 7)
+            {
+                printf("SERVER/MAIN190: Nunca deberiamos llegar aquí");
+            }
+            client_payload = server_receive_stdpayload(players_info, my_attention);
+            
+            int defender = ((uint8_t) client_payload[0]) - 1;
+            char return_value = (char) steal(players_info[my_attention], players_info[defender], (int) client_payload[1]);
+
+            if (return_value > 0)
+            {
+                char message7_1 = 0;
+                server_send_stdmessage(players_info, my_attention, 9, 1, &message7_1);
+                char* message_players = malloc(50); // nombre más un 1 o 0
+                for (int i = 0; i < 50; i++)
+                {
+                    message_players[i] = players_info[defender]->name[i];
+                }
                 for (int i = 0; i < 4; i++)
                 {
-                    if (i != my_attention) // se envía el mensaje 11 a todos menos al ladrón
+                    if (players_info[i]->socket != -1 && i != my_attention) // se envía el mensaje 11 a todos menos al ladrón
                     {
                         server_send_stdmessage(players_info, i, 11, 51, &message_players[0]);
                     }
@@ -257,35 +400,58 @@ int main(int argc, char *argv[]){
                 free(message_players);
 
                 char* robbed_message = malloc(2); // 1 char más 1 int
-                robbed_message[0] = (char) payload[1];
-                int amount = (int) floor((players_info[payload[0]]->food/0.9)*0.1);
-                robbed_message[1] = (uint8_t) amount;
-                server_send_stdmessage(players_info, (int) payload[0], 10, 2, &robbed_message[0]);
+                robbed_message[0] = (char) client_payload[1];
+                robbed_message[1] = 0;
+                server_send_stdmessage(players_info, defender, 10, 2, &robbed_message[0]);
                 free(robbed_message);
+            }
+            else
+            {
+                char message7_1 = 1;
+                server_send_stdmessage(players_info, my_attention, 9, 1, &message7_1);
             }
         }
 
         else if (msg_code == 8)
         {
-            my_attention = (my_attention + 1) % 4;
+            free(client_payload);
+            next_player(players_info, &my_attention);
+            collect_resources(players_info[my_attention]);
         }
 
         else if (msg_code == 9)
         {
+            free(client_payload);
+            players_info[my_attention] -> status = -1;
+            // Cerrar el socket
+            next_player(players_info, &my_attention);
+            collect_resources(players_info[my_attention]);
+            if(check_winner(players_info))
+            {
+                char* message9_1 = malloc(51);
+                message9_1[0] = 2;
+                for (int i = 0; i < 50; i++)
+                {
+                    message9_1[1 + i] = players_info[my_attention]->name[i];
+                }
 
+                for (int i = 0; i < 4; i++)
+                {
+                    if (players_info[i] -> socket != -1)
+                    {
+                        server_send_stdmessage(players_info, i, 12, 1 + 50, message9_1);
+                    }
+                }
+
+                free(message9_1);
+                break;
+            }
         }
 
         else if (msg_code == 10)
         {
-
+            
         }
-
-        else if (msg_code == 255) //Termina tu turno
-        {
-            my_attention = (my_attention + 1) % 4;
-        }
-
-    printf("------------------\n");
 
     }
 
@@ -295,6 +461,9 @@ int main(int argc, char *argv[]){
     }
 
     free(players_info);
+    free(addr_size);
+    free(lock);
+    free(arguments);
 
     return 0;
 }

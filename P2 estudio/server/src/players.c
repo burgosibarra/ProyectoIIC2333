@@ -4,8 +4,13 @@
 Player* player_init()
 {
     Player* player = malloc(sizeof(Player));
+    player -> socket = -1;
     player -> status = -1;
-    player -> name = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+    player -> name = malloc(50);
+    for (int i = 0; i < 50; i++)
+    {
+        player -> name[i] = '\0';
+    }
     return player;
 }
 
@@ -20,7 +25,10 @@ void set_player(Player* player, char* name, int farmers, int miners, int enginee
                 int miners_level, int engineers_level, int attack_level, int defense_level)
 {
     player -> status = 1;
-    player -> name = name;
+    for (int i = 0; i < 50; i++)
+    {
+        player -> name[i] = name[i];
+    }
     player -> farmers = farmers;
     player -> miners = miners;
     player -> engineers = engineers;
@@ -110,7 +118,7 @@ int level_up(Player* player, int option)
     options[2] = player -> engineers_level;
     options[3] = player -> attack_level;
     options[4] = player -> defense_level; 
-    int upgrade = options[option];
+    int upgrade = options[option - 1];
     if (upgrade < 5)
     {
         if (player -> food >= 10* upgrade && player -> gold >= 10 * upgrade && player -> science >= 10* upgrade)
@@ -163,6 +171,7 @@ int level_up(Player* player, int option)
 
 void player_destroy(Player* player)
 {
+    free(player->name);
     free(player);
 }
 
@@ -208,23 +217,26 @@ int steal(Player* player, Player* player_robbed, int resource)
 {
     if (player->science<10)
     {
-        return 1;
+        return 0;
     }
     player->science = player->science - 10;
+    int amount_to_steal;
     if (resource == 0)
     {
-        player->food = player_robbed->food*0.1;
-        player_robbed->food = player_robbed->food*0.9;
+        amount_to_steal = floor(player_robbed->food*0.1);
+        player->food += amount_to_steal;
+        player_robbed->food -= amount_to_steal;
+        return amount_to_steal;
     }
     else if (resource == 1)
     {
-        player->gold = player_robbed->gold*0.1;
-        player_robbed->gold = player_robbed->gold*0.9;
+        amount_to_steal = floor(player_robbed->gold*0.1);
+        player->gold += amount_to_steal;
+        player_robbed->gold -= amount_to_steal;
+        return amount_to_steal;
     }
     else
     {
-        return 1;
+        return 0;
     }
-    
-    return 0;
 }

@@ -27,7 +27,10 @@ char* server_receive_stdpayload(Player** players_array, int player)
 
     // Se obtiene el payload
     char* payload = malloc(len);
-    int received = recv(socket, payload, len, 0);
+    if (len > 0)
+    {
+        int received = recv(socket, payload, len, 0);
+    }
     // Se retorna
     return payload;
 }
@@ -80,19 +83,19 @@ int server_receive_setting(Player** players_array, int player)
 
 void server_send_stdmessage(Player** players_array, int player, int pkg_id, int size, char* message)
 {
-  
-    int payloadSize = (size + 1);
+
+    int payloadSize = (size);
 
     // Se arma el paquete
-    char msg[1+1+payloadSize];
+    char* msg = malloc(1+1+payloadSize);
     msg[0] = pkg_id;
     msg[1] = payloadSize;
 
     for (int i = 2; i < size + 2; i++)
     {
-        msg[i] = message[i];
+        msg[i] = message[i - 2];
     } //si no usar memcpy
-
     // Se envía el paquete
     send(players_array[player]->socket, msg, 2 + payloadSize, 0);
+    free(msg);
 }
