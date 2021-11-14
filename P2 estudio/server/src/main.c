@@ -48,7 +48,7 @@ int main(int argc, char *argv[]){
     int PORT;
     if (argc != 5)
     {
-        printf("El uso es ./client -i <ip_address> -p <port>\n");
+        printf("El uso es ./server -i <ip_address> -p <port>\n");
         return 0;
     }
     else if (strcmp(argv[1], "-i") == 0 && strcmp(argv[3], "-p") == 0)
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]){
     }
     else
     {
-        printf("El uso es ./client -i <ip_address> -p <port>\n");
+        printf("El uso es ./server -i <ip_address> -p <port>\n");
         return 0;
     }
 
@@ -86,6 +86,8 @@ int main(int argc, char *argv[]){
     int leader_socket;
     int leader_msg_code;
     char* client_payload;
+    int pre_count = 1;
+    int new_player_count = 0;
 
     while (started == 0)
     {
@@ -103,6 +105,13 @@ int main(int argc, char *argv[]){
                 {
                     count++;
                     char message[1];
+                    
+                    if (pre_count < count && count > new_player_count) {
+                        message[0] = 3;
+                        server_send_stdmessage(players_info, 0, 1, 1, &message[0]);
+                        new_player_count = count;
+                    }
+
                     message[0] = 1;
                     server_send_stdmessage(players_info, 0, 1, 1, &message[0]);
                     everyone_is_ready = 0;
@@ -111,6 +120,15 @@ int main(int argc, char *argv[]){
                 if (players_info[player]->status == 1)
                 {
                     count++;
+                    
+
+                    if (pre_count < count && count > new_player_count) {
+                        char message[1];
+                        message[0] = 3;
+                        server_send_stdmessage(players_info, 0, 1, 1, &message[0]);
+                        new_player_count = count;
+
+                    }
                 }
             }
             if (count > 1 && everyone_is_ready)
@@ -137,12 +155,16 @@ int main(int argc, char *argv[]){
             }
             release(lock);
 
+            pre_count = count;
+
         }
         else
         {
             printf("91: Nunca deberíamos llegar aquí \n");
         }
         free(client_payload);
+        
+        
     }
 
     int my_attention = 0;
