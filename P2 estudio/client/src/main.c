@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <strings.h>
 #include "conection.h"
 #include "comunication.h"
 
@@ -529,9 +530,28 @@ while (1) {
 
 int main (int argc, char *argv[]){
   //Se obtiene la ip y el puerto donde está escuchando el servidor (la ip y puerto de este cliente da igual)
-  char * IP = "0.0.0.0";
-  int PORT = 8080; //Puede ser 22 u 80
-
+  char* IP;
+  int PORT;
+  if (argc != 5)
+  {
+      printf("El uso es ./client -i <ip_address> -p <port>\n");
+      return 0;
+  }
+  else if (strcmp(argv[1], "-i") == 0 && strcmp(argv[3], "-p") == 0)
+  {
+    IP = argv[2];
+    PORT = atoi(argv[4]);
+  }
+  else if (strcmp(argv[1], "-p") == 0 && strcmp(argv[3], "-i") == 0)
+  {
+    IP = argv[4];
+    PORT = atoi(argv[2]);
+  }
+  else
+  {
+    printf("El uso es ./client -i <ip_address> -p <port>\n");
+    return 0;
+  }
   // Se prepara el socket
   int server_socket = prepare_socket(IP, PORT);
 

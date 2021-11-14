@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <strings.h>
 #include "comunication.h"
 #include "conection.h"
 #include "players.h"
@@ -43,8 +44,28 @@ int check_winner(Player** players_info)
 
 int main(int argc, char *argv[]){
     // Se define una IP y un puerto
-    char * IP = "0.0.0.0";
-    int PORT = 8080;
+    char* IP;
+    int PORT;
+    if (argc != 5)
+    {
+        printf("El uso es ./client -i <ip_address> -p <port>\n");
+        return 0;
+    }
+    else if (strcmp(argv[1], "-i") == 0 && strcmp(argv[3], "-p") == 0)
+    {
+        IP = argv[2];
+        PORT = atoi(argv[4]);
+    }
+    else if (strcmp(argv[1], "-p") == 0 && strcmp(argv[3], "-i") == 0)
+    {
+        IP = argv[4];
+        PORT = atoi(argv[2]);
+    }
+    else
+    {
+        printf("El uso es ./client -i <ip_address> -p <port>\n");
+        return 0;
+    }
 
     // Se crea el servidor y se obtienen los sockets de ambos clientes.
     pthread_t thread;
