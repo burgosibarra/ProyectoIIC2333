@@ -204,14 +204,14 @@ while (1) {
 
   if (msg_server == 10)
   {
-    int resource = payload_server[0];
+    int resource = (int) payload_server[0];
     int amount = (int) payload_server[1];
     if (resource == 0)
     {
-      printf("The han robado %i de comida", amount);
+      printf("The han robado %i de comida \n", amount);
     }else
     {
-      printf("The han robado %i de oro", amount);
+      printf("The han robado %i de oro \n", amount);
     }
     free(payload_server);
   }
@@ -393,9 +393,59 @@ while (1) {
           break;
 
         case 5: // Espiar
+          client_send_message(server_socket, 6, 0, (char*) NULL);
+
+          msg_server = client_receive_id(server_socket);
+          if (msg_server != 2)
+          {
+            printf("CLIENTE/MAIN289: Nunca deberíamos llegar aquí \n");
+          }
+        
+          payload_server = client_receive_payload(server_socket);
+
+          char* name4 = malloc(50);
+          for (int i = 0; i <= 3; i++)
+          {
+            for (int j = 0; j < 50; j++)
+            { 
+              name4[j] = payload_server[12 + (50 * i) + j];
+            }
+            printf("[%i] %s \n", i + 1, name4);
+          }
+          free(payload_server);
+
           printf("\n¿A quién quieres espiar? \n>> ");
           int spy = getchar() - '0';
           getchar();
+
+          client_send_message(server_socket, 6, 1, (char*) &spy);
+
+          msg_server = client_receive_id(server_socket);
+          if (msg_server != 8)
+          {
+            printf("CLIENTE/MAIN359: Nunca deberíamos llegar aquí \n");
+          }
+
+          payload_server = client_receive_payload(server_socket);
+
+          if (payload_server[0] == 0)
+          {
+            printf("La aldea a la que estas espiando tiene la siguiente información:\n");        
+            printf("Guerreros: %i\n", payload_server[1]);
+            printf("Ataque: %i\n", payload_server[2]);
+            printf("Defensa: %i\n", payload_server[3]);
+          }
+          else if (payload_server[0] == 1)
+          {
+            printf("No tienes los recursos necesarios \n");
+          }
+          else
+          {
+            printf("Has dado una opción inválida\n");
+          }
+          
+          free(payload_server);
+          free(name4);
           break;
 
         case 6: // Robar
@@ -424,8 +474,8 @@ while (1) {
             getchar();
 
             printf("\n¿Qué quieres robar? \n");
-            printf("\n1. Comida\n");
-            printf("\n2. Oro");
+            printf("\n1. Comida");
+            printf("\n2. Oro\n");
             int resource = getchar() - '0';
             getchar();
             resource--;
@@ -450,7 +500,7 @@ while (1) {
               printf("No tienes suficientes recursos\n");
             }else
             {
-              printf("Opción Válida\n");
+              printf("Opción Inválida\n");
             }
             free(payload_server);
             free(name3);

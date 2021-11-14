@@ -32,7 +32,7 @@ void set_player(Player* player, char* name, int farmers, int miners, int enginee
                 int gold, int food, int science, int farmers_level, int miners_level,
                 int engineers_level, int attack_level, int defense_level);
 
-int spy(Player* player, Player* player_spied);
+int* spy(Player** players_info, int attacker, int spied);
 int level_up(Player* player, int option);
 void collect_resources(Player* player);
 int create_villager(Player* player, int option);

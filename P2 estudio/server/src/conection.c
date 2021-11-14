@@ -112,6 +112,9 @@ void* wait_connections(void * ARGS)
     connect_player(array[3], client_socket);
     release(lock);
     client_setting(array, 3, lock);
+
+    pthread_exit(0);
+
 }
 
 

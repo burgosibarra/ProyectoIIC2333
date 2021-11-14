@@ -198,18 +198,33 @@ int attack(Player* attacker, Player* defender)
 }
 
 // 2.5.5 Espiar
-int spy(Player* player, Player* player_spied) 
+int* spy(Player** players_info, int attacker, int spied)
 {
-    if (player->gold<30)
+    int* return_value = malloc(4 * sizeof(int));
+
+    if (spied >= 4 || spied < 0)
     {
-        return 1;
+        return_value[0] = 2;
+        return return_value;
     }
-    player -> gold -= 30;
-    printf("Spying on the player %s \n", player_spied -> name);
-    printf("Number of warriors: %i \n", player_spied -> warriors);
-    printf("Attack Level: %i \n", player_spied -> attack_level);
-    printf("Defense Level: %i \n", player_spied -> defense_level);
-    return 0;
+
+    if (players_info[spied]->status != 1 || attacker == spied)
+    {
+        return_value[0] = 2;
+        return return_value;
+    }
+
+    if (players_info[attacker]->gold < 30)
+    {
+        return_value[0] = 1;
+        return return_value;
+    }
+    players_info[attacker] -> gold -= 30;
+    return_value[0] = 0;
+    return_value[1] = players_info[spied] -> warriors;
+    return_value[2] = players_info[spied] -> attack_level;
+    return_value[3] = players_info[spied] -> defense_level;
+    return return_value;
 }
 
 // 2.5.6 Robar
